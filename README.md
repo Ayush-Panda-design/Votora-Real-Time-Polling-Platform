@@ -1,6 +1,6 @@
-# 📊 Votora - Real-Time Polling & Live Feedback Platform
+ 📊 Votora - Real-Time Polling & Live Feedback Platform
 
-)
+
 
 **Votora** is a production-grade, full-stack platform that allows creators, educators, and event hosts to run immersive, real-time polls and quizzes. Built with modern web technologies, it features live analytics, advanced anti-cheat mechanisms, and a dual-timing system, delivering a seamless experience for both creators and respondents.
 
@@ -8,7 +8,7 @@
 
 ## 🌟 Key Features
 
-###  **For Creators**
+### 🚀 **For Creators**
 - **Dynamic Poll Creation**: Build standard polls or full quizzes (with correct answers and scoring).
 - **Dual Time Management**: 
   - *Auto-Expiry*: Set a precise date/time for the poll to close automatically.
@@ -160,8 +160,9 @@ poll-platform/
 
 ---
 
+## 🛡️ Hackathon Requirements Compliance Checklist
 
-
+This project was built to exceed standard hackathon requirements:
 
 - [x] **Full-Stack Implementation**: Seamless integration between React, Node, and MongoDB.
 - [x] **Poll Creation**: Multi-question support with descriptions.
@@ -175,10 +176,3 @@ poll-platform/
 - [x] **Code Quality**: Strict separation of concerns, global error handling, robust authentication (httpOnly cookies), and comprehensive documentation.
 
 ---
-
-## 📜 License
-
-This project is licensed under the MIT License. Feel free to use, modify, and distribute it as needed.
-
-
-
