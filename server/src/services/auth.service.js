@@ -57,10 +57,20 @@ export const loginService = async ({ email, password }) => {
 };
 
 export const googleAuthService = async (idToken) => {
-  const ticket = await client.verifyIdToken({
-    idToken,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
+  if (!idToken) throw new ApiError(400, 'Google ID token is required');
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    throw new ApiError(500, 'Google sign-in is not configured on the server (missing GOOGLE_CLIENT_ID)');
+  }
+
+  let ticket;
+  try {
+    ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+  } catch {
+    throw new ApiError(401, 'Invalid Google token. Ensure GOOGLE_CLIENT_ID matches VITE_GOOGLE_CLIENT_ID.');
+  }
 
   const payload = ticket.getPayload();
   const { sub: googleId, email, name, picture: avatar } = payload;
