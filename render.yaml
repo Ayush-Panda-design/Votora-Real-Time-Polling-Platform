@@ -1,0 +1,23 @@
+# Render Blueprint — backend API only (deploy client separately on Vercel)
+# Dashboard: https://dashboard.render.com → New → Blueprint → connect repo
+services:
+  - type: web
+    name: votora-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
