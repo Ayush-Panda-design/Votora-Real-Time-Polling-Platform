@@ -49,7 +49,7 @@ Votora is built using the **MERN** stack, augmented with modern tooling for real
 
 ### **Security & Architecture Highlights**
 - **Clean Architecture**: Strong separation of concerns (Routes → Controllers → Services → Models).
-- **XSS Protection**: JWT tokens are securely stored in `httpOnly` cookies, completely mitigating LocalStorage XSS vulnerabilities.
+- **XSS Protection**: JWT tokens are stored exclusively in `httpOnly` cookies — never in localStorage.
 - **Rate Limiting**: Custom limits (`express-rate-limit`) on general API endpoints and strict limits on Auth endpoints to prevent brute-force attacks.
 - **Atomic Operations**: MongoDB `$inc` operators prevent race conditions and double-voting during high-concurrency traffic spikes.
 - **Global Error Handling**: Standardized `ApiError` class ensuring consistent JSON error responses across the entire application.
@@ -76,20 +76,20 @@ cd votora
 cd server
 npm install
 ```
-Create a `.env` file in the `server/` directory:
+Create a `.env` file in the `server/` directory (or run `npm run setup` from the project root):
 ```env
-PORT=5000
+PORT=5013
 NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 
 # Database
-MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/votora
+MONGO_URI=mongodb://localhost:27017/votora
 
 # JWT Security
 JWT_SECRET=your_highly_secure_random_string
 JWT_EXPIRES_IN=7d
 
-# Google OAuth
+# Google OAuth (client-side ID token verification)
 GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ```
 Run the backend:
@@ -105,10 +105,10 @@ npm install
 ```
 Create a `.env` file in the `client/` directory:
 ```env
-VITE_API_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_URL=http://localhost:5013/api
+VITE_SOCKET_URL=http://localhost:5013
 
-# To enable Google Sign-In, provide your Client ID. 
+# To enable Google Sign-In, provide your Client ID.
 # Leaving it blank or as 'your_google_client_id_here' will gracefully hide the Google buttons.
 VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ```
@@ -117,7 +117,24 @@ Run the frontend:
 npm run dev
 ```
 
-The application will be running at `http://localhost:5173`.
+### **Quick start (both apps)**
+
+From the project root:
+
+```bash
+npm install
+npm run setup      # copies .env.example → .env for server & client
+npm run install:all
+npm run dev        # starts server (5013) + client (5173)
+```
+
+### **Docker**
+
+```bash
+docker compose up --build
+```
+
+The application will be running at `http://localhost:5173` (client) with the API at `http://localhost:5013`.
 
 ---
 

@@ -14,6 +14,14 @@ const userSchema = new mongoose.Schema(
     interests: [{ type: String }],
     onboardingCompleted: { type: Boolean, default: false },
     googleId: { type: String },
+    lastLoginAt: { type: Date, default: null },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
+    isEmailVerified: { type: Boolean, default: true },
+    emailVerifyToken: { type: String, select: false },
+    emailVerifyExpires: { type: Date, select: false },
+    refreshTokenHash: { type: String, select: false },
+    refreshTokenExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );

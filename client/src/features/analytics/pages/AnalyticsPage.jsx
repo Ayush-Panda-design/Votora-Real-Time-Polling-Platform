@@ -1,40 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiUsers, FiRefreshCw, FiMonitor, FiShare2, FiDownload, FiClock } from 'react-icons/fi';
+import { FiArrowLeft, FiRefreshCw, FiMonitor, FiShare2, FiDownload, FiClock, FiFileText } from 'react-icons/fi';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
 import api from '../../../services/api';
-import { connectSocket, getSocket } from '../../../socket/socket';
-import { SOCKET_EVENTS } from '../../../utils/constants';
+import usePollSocket, { emitStartTimer } from '../../../hooks/usePollSocket';
 import { CHART_COLORS, buildPollUrl, copyToClipboard } from '../../../utils/helpers';
 import Spinner from '../../../components/ui/Spinner';
-import Button from '../../../components/ui/Button';
-import toast from 'react-hot-toast';
+import Modal from '../../../components/ui/Modal';
+import SectionGuide from '../../../components/ui/SectionGuide';
+import notify from '../../../utils/notify';
 
 const AnalyticsPage = () => {
   const { id } = useParams();
   const [data, setData]         = useState(null);
   const [responses, setResponses] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
   const [participants, setParticipants] = useState(0);
+  const [selectedResponse, setSelectedResponse] = useState(null);
 
   // Timer states
   const [activeTimerEnd, setActiveTimerEnd] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
 
-  const fetchAnalytics = async () => {
+  const refreshResponses = useCallback(async () => {
+    try {
+      const responsesRes = await api.get(`/responses/${id}`);
+      setResponses(responsesRes.data.responses);
+    } catch { /* ignore */ }
+  }, [id]);
+
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      const [analyticsRes, responsesRes] = await Promise.all([
-        api.get(`/analytics/${id}`),
-        api.get(`/responses/${id}`)
-      ]);
+      setError(null);
+      const analyticsRes = await api.get(`/analytics/${id}`);
       setData(analyticsRes.data);
-      setResponses(responsesRes.data.responses);
+
+      try {
+        const responsesRes = await api.get(`/responses/${id}`);
+        setResponses(responsesRes.data.responses ?? []);
+      } catch {
+        setResponses([]);
+      }
 
       if (analyticsRes.data.poll) {
         const p = analyticsRes.data.poll;
@@ -46,12 +58,13 @@ const AnalyticsPage = () => {
           if (end > new Date()) setActiveTimerEnd(end);
         }
       }
-    } catch (err) {
-      toast.error('Failed to load analytics');
+    } catch {
+      setError('Failed to load analytics');
+      notify.error('Failed to load analytics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleExportCSV = () => {
     if (!data || !data.stats) return;
@@ -75,39 +88,51 @@ const AnalyticsPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('Data exported as CSV!');
+    notify.success('Data exported as CSV!');
+  };
+
+  const handleExportPDF = () => {
+    if (!data || !data.stats) return;
+    const { poll, stats } = data;
+    const win = window.open('', '_blank');
+    if (!win) {
+      notify.error('Allow pop-ups to export PDF');
+      return;
+    }
+    const rows = (stats.questionStats || []).map((qs, i) => {
+      const opts = Object.entries(qs.optionCounts || {})
+        .map(([opt, count]) => `<li>${opt}: ${count} (${qs.optionPercentages?.[opt] ?? 0}%)</li>`)
+        .join('');
+      return `<section><h3>Q${i + 1}: ${qs.questionText}</h3><ul>${opts}</ul></section>`;
+    }).join('');
+    win.document.write(`<!DOCTYPE html><html><head><title>${poll.title} — Results</title>
+      <style>body{font-family:system-ui,sans-serif;padding:2rem;max-width:800px;margin:0 auto}
+      h1{margin-bottom:0.25rem}h3{margin:1.5rem 0 0.5rem}ul{margin:0;padding-left:1.25rem}</style></head>
+      <body><h1>${poll.title}</h1><p>Poll code: ${poll.pollCode} · ${stats.totalResponses} responses</p>${rows}
+      <script>window.onload=()=>{window.print();}</script></body></html>`);
+    win.document.close();
+    notify.success('Print dialog opened — save as PDF');
   };
 
   useEffect(() => {
     fetchAnalytics();
+  }, [fetchAnalytics]);
 
-    const socket = connectSocket();
-    socket.emit(SOCKET_EVENTS.JOIN_POLL, id);
-    socket.emit('subscribe_analytics', id);
-
-    socket.on(SOCKET_EVENTS.ANALYTICS_UPDATE, (updated) => {
-      setData((prev) => prev ? { ...prev, stats: updated } : prev);
-    });
-
-    socket.on(SOCKET_EVENTS.NEW_RESPONSE, ({ totalResponses }) => {
-      setData((prev) => prev ? { ...prev, stats: { ...prev.stats, totalResponses } } : prev);
-    });
-
-    socket.on(SOCKET_EVENTS.PARTICIPANT_COUNT, ({ count }) => setParticipants(count));
-
-    socket.on(SOCKET_EVENTS.TIMER_STARTED, ({ endTime }) => {
+  usePollSocket(id, {
+    onAnalyticsUpdate: (updated) => {
+      setData((prev) => (prev ? { ...prev, stats: updated } : prev));
+    },
+    onNewResponse: ({ totalResponses }) => {
+      setData((prev) => (prev ? { ...prev, stats: { ...prev.stats, totalResponses } } : prev));
+      refreshResponses();
+    },
+    onParticipantCount: ({ count }) => setParticipants(count),
+    onTimerStarted: ({ endTime }) => {
       const end = new Date(endTime);
       if (end > new Date()) setActiveTimerEnd(end);
-    });
-
-    return () => {
-      socket.emit(SOCKET_EVENTS.LEAVE_POLL, id);
-      socket.off(SOCKET_EVENTS.ANALYTICS_UPDATE);
-      socket.off(SOCKET_EVENTS.NEW_RESPONSE);
-      socket.off(SOCKET_EVENTS.PARTICIPANT_COUNT);
-      socket.off(SOCKET_EVENTS.TIMER_STARTED);
-    };
-  }, [id]);
+    },
+    onPollExpired: () => notify.warning('Poll has expired', { icon: '⏰' }),
+  }, { analytics: true });
 
   useEffect(() => {
     if (!activeTimerEnd) return;
@@ -125,20 +150,31 @@ const AnalyticsPage = () => {
   }, [activeTimerEnd]);
 
   const startTimer = () => {
-    const socket = getSocket();
-    if (socket) {
-      socket.emit(SOCKET_EVENTS.START_TIMER, { pollId: id });
-      toast.success('Timer started!');
-    }
+    emitStartTimer(id);
+    notify.success('Timer started!');
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
-  if (!data)   return <div className="text-center py-20 text-gray-400">No analytics data available.</div>;
+
+  if (error || !data) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20">
+        <p className="text-votora-muted mb-4">{error || 'No analytics data available.'}</p>
+        <button type="button" onClick={fetchAnalytics} className="btn-primary">
+          Try again
+        </button>
+        <Link to="/dashboard" className="block mt-4 text-cyan-400 hover:text-cyan-300 text-sm">
+          Back to dashboard
+        </Link>
+      </div>
+    );
+  }
 
   const { poll, stats } = data;
 
   return (
     <div className="max-w-6xl mx-auto">
+      <SectionGuide page="analytics" />
       {/* Header */}
       <div className="flex flex-col md:flex-row items-center gap-4 mb-8">
         <div className="flex items-center gap-4 flex-1 min-w-0 w-full">
@@ -166,14 +202,17 @@ const AnalyticsPage = () => {
             <FiRefreshCw /> Refresh
           </button>
           <button onClick={handleExportCSV} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a1a] border border-white/[0.06] text-[#a3a3a3] hover:text-white hover:bg-white/5 transition font-medium text-[13px] flex-1 md:flex-none justify-center">
-            <FiDownload /> Export
+            <FiDownload /> CSV
+          </button>
+          <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a1a] border border-white/[0.06] text-[#a3a3a3] hover:text-white hover:bg-white/5 transition font-medium text-[13px] flex-1 md:flex-none justify-center">
+            <FiFileText /> PDF
           </button>
           <Link to={`/polls/${id}/present`} className="flex-1 md:flex-none">
             <button className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a1a] border border-white/[0.06] text-[#a3a3a3] hover:text-white hover:bg-white/5 transition font-medium text-[13px]">
               <FiMonitor /> Present
             </button>
           </Link>
-          <button onClick={async () => { const ok = await copyToClipboard(buildPollUrl(poll.pollCode)); toast.success(ok ? 'Link copied!' : 'Failed'); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a1a] border border-white/[0.06] text-[#a3a3a3] hover:text-white hover:bg-white/5 transition font-medium text-[13px] flex-1 md:flex-none justify-center">
+          <button onClick={async () => { const ok = await copyToClipboard(buildPollUrl(poll.pollCode)); notify.success(ok ? 'Link copied!' : 'Failed'); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#1a1a1a] border border-white/[0.06] text-[#a3a3a3] hover:text-white hover:bg-white/5 transition font-medium text-[13px] flex-1 md:flex-none justify-center">
             <FiShare2 /> Share
           </button>
         </div>
@@ -185,14 +224,31 @@ const AnalyticsPage = () => {
           { label: 'Total Responses', value: stats?.totalResponses ?? 0,          color: 'text-cyan-500', icon: '📊' },
           { label: 'Live Participants', value: participants,                         color: 'text-emerald-400', icon: '🟢' },
           { label: 'Questions',        value: stats?.questionStats?.length ?? 0,   color: 'text-cyan-400', icon: '❓' },
-          { label: 'Poll Code',        value: poll?.pollCode ?? '—',              color: 'text-amber-400', icon: '🔑' },
+          { label: 'Peak Hour', value: stats?.peakActivity?.count ?? '—', color: 'text-amber-400', icon: '⚡',
+            sub: stats?.peakActivity?.time ? new Date(stats.peakActivity.time).toLocaleString() : null },
         ].map((s) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="bg-[#151515] border border-white/[0.06] rounded-2xl p-5 shadow-lg">
             <p className="text-[#6b6b6b] text-sm font-medium">{s.icon} {s.label}</p>
             <p className={`text-3xl font-black mt-1 ${s.color}`}>{s.value}</p>
+            {s.sub && <p className="text-xs text-[#6b6b6b] mt-1 truncate">{s.sub}</p>}
           </motion.div>
         ))}
       </div>
+
+      {stats?.responseTimeline?.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 mb-8">
+          <h2 className="text-lg font-semibold text-[#f5f5f5] mb-4">Response activity over time</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={stats.responseTimeline} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="time" tick={{ fill: '#6b6b6b', fontSize: 11 }} tickFormatter={(v) => v.slice(5, 16)} />
+              <YAxis tick={{ fill: '#6b6b6b', fontSize: 12 }} allowDecimals={false} />
+              <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, color: '#fff' }} />
+              <Line type="monotone" dataKey="count" stroke="#22d3ee" strokeWidth={2} dot={{ fill: '#22d3ee', r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </motion.div>
+      )}
 
       {/* Per-question charts */}
       {stats?.questionStats?.length === 0 && (
@@ -294,7 +350,12 @@ const AnalyticsPage = () => {
                 });
               }
               return (
-                <div key={idx} className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+                <button
+                  key={res._id || idx}
+                  type="button"
+                  onClick={() => setSelectedResponse(res)}
+                  className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 flex items-center justify-between text-left w-full hover:border-cyan-500/30 transition-colors cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-bold">
                       {res.respondent?.name ? res.respondent.name.charAt(0).toUpperCase() : '?'}
@@ -310,12 +371,36 @@ const AnalyticsPage = () => {
                       <p className="font-bold text-cyan-500">{score} / {poll.questions.length}</p>
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={!!selectedResponse}
+        onClose={() => setSelectedResponse(null)}
+        title={selectedResponse?.respondent?.name || 'Anonymous respondent'}
+      >
+        {selectedResponse && (
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            <p className="text-xs text-votora-muted">
+              Submitted {new Date(selectedResponse.submittedAt).toLocaleString()}
+              {selectedResponse.ipAddress && ` · IP ${selectedResponse.ipAddress}`}
+            </p>
+            {selectedResponse.answers.map((ans, ai) => (
+              <div key={ai} className="p-3 rounded-xl bg-white/5 border border-white/[0.06]">
+                <p className="text-xs text-cyan-400 font-medium mb-1">Q{ans.questionIndex + 1}</p>
+                <p className="text-sm text-white mb-1">{ans.questionText || poll?.questions?.[ans.questionIndex]?.question}</p>
+                <p className="text-sm text-votora-muted">
+                  {ans.selectedOption || <span className="italic">Skipped</span>}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

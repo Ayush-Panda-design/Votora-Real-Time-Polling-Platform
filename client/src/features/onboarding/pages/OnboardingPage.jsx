@@ -4,8 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { completeOnboarding } from '../../auth/authSlice';
 import { USER_INTERESTS, USER_ROLES } from '../../../utils/constants';
-import toast from 'react-hot-toast';
-import Button from '../../../components/ui/Button';
+import notify from '../../../utils/notify';
 
 const steps = ['role', 'interests', 'done'];
 
@@ -28,7 +27,7 @@ const OnboardingPage = () => {
 
   const handleFinish = async () => {
     if (!role) {
-      toast.error('Please select your role');
+      notify.error('Please select your role');
       return;
     }
 
@@ -37,10 +36,10 @@ const OnboardingPage = () => {
     );
 
     if (completeOnboarding.fulfilled.match(res)) {
-      toast.success('Welcome to Votora!');
+      notify.success('Welcome to Votora!');
       navigate('/dashboard');
     } else {
-      toast.error('Something went wrong');
+      notify.error('Something went wrong');
     }
   };
 

@@ -19,6 +19,8 @@ const analyticsSchema = new mongoose.Schema(
     pollId: { type: mongoose.Schema.Types.ObjectId, ref: 'Poll', required: true, unique: true },
     totalResponses: { type: Number, default: 0 },
     questionStats: { type: [questionStatSchema], default: [] },
+    responseTimeline: { type: [{ time: String, count: Number }], default: [] },
+    peakActivity: { type: { time: String, count: Number }, default: null },
     updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

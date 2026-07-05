@@ -4,11 +4,12 @@ import app from './app.js';
 import connectDB from './config/db.js';
 import { initSocket } from './config/socket.js';
 import startExpiryJob from './jobs/expiry.job.js';
+import ensureUploadDirs from './utils/ensureDirs.js';
 
 const PORT = process.env.PORT || 5013;
 
 const start = async () => {
- 
+  ensureUploadDirs();
   await connectDB();
 
 

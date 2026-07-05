@@ -20,5 +20,8 @@ const responseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+responseSchema.index({ pollId: 1, respondent: 1 }, { sparse: true });
+responseSchema.index({ pollId: 1, ipAddress: 1 }, { sparse: true });
+
 const Response = mongoose.model('Response', responseSchema);
 export default Response;

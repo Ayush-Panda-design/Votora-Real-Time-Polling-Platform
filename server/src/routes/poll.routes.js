@@ -9,6 +9,7 @@ import {
   getPublicPoll,
   getPublicResults,
   duplicatePoll,
+  unlockPublicPoll,
 } from '../controllers/poll.controller.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { createPollValidator, updatePollValidator } from '../validators/poll.validator.js';
@@ -18,6 +19,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/public/:pollCode', getPublicPoll);
+router.post('/public/:pollCode/unlock', unlockPublicPoll);
 router.get('/public/results/:pollCode', getPublicResults);
 
 // Protected routes

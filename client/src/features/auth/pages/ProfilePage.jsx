@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FiUser, FiMail, FiBriefcase, FiBarChart2, FiShield,
+import { FiUser, FiMail, FiBriefcase, FiBarChart2, FiShield,
   FiTrash2, FiLogOut, FiActivity, FiZap, FiAward,
   FiEdit3, FiCamera, FiCheck, FiX, FiLock, FiEye, FiEyeOff,
 } from 'react-icons/fi';
+import useUserSocket from '../../../hooks/useUserSocket';
+import SectionGuide from '../../../components/ui/SectionGuide';
 
 import { updateProfile, logoutUser, uploadAvatar } from '../authSlice';
 import api from '../../../services/api';
-import toast from 'react-hot-toast';
+import notify from '../../../utils/notify';
 import { getImageUrl } from '../../../utils/helpers';
 
 
@@ -58,40 +59,48 @@ const ProfilePage = () => {
       .catch(console.error);
   }, []);
 
+  const refreshStats = () => {
+    api.get('/users/profile/stats')
+      .then((r) => setStats(r.data.stats))
+      .catch(console.error);
+  };
+
+  useUserSocket({ onPollStatsUpdate: refreshStats }, true);
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     const res = await dispatch(updateProfile(profileForm));
-    if (updateProfile.fulfilled.match(res)) { toast.success('Profile updated'); setIsEditing(false); }
-    else toast.error(res.payload || 'Update failed');
+    if (updateProfile.fulfilled.match(res)) { notify.success('Profile updated'); setIsEditing(false); }
+    else notify.error(res.payload || 'Update failed');
   };
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) return toast.error('Max size 2 MB');
+    if (file.size > 2 * 1024 * 1024) return notify.error('Max size 2 MB');
     const res = await dispatch(uploadAvatar(file));
-    if (uploadAvatar.fulfilled.match(res)) toast.success('Avatar updated');
-    else toast.error(res.payload || 'Upload failed');
+    if (uploadAvatar.fulfilled.match(res)) notify.success('Avatar updated');
+    else notify.error(res.payload || 'Upload failed');
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) return toast.error('Passwords do not match');
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) return notify.error('Passwords do not match');
     try {
       await api.patch('/users/profile/password', { oldPassword: passwordForm.oldPassword, newPassword: passwordForm.newPassword });
-      toast.success('Password updated');
+      notify.success('Password updated');
       setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setShowPwSection(false);
-    } catch { toast.error('Failed to update password'); }
+    } catch { notify.error('Failed to update password'); }
   };
 
   const handleDeleteAccount = async () => {
     if (!confirm('This will permanently delete your account. Continue?')) return;
     try {
       await api.delete('/users/profile');
-      toast.success('Account deleted');
+      notify.success('Account deleted');
       dispatch(logoutUser());
-    } catch { toast.error('Delete failed'); }
+    } catch { notify.error('Delete failed'); }
   };
 
   return (
@@ -113,6 +122,8 @@ const ProfilePage = () => {
       </div>
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: 1000, margin: '0 auto', padding: '36px 24px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        <SectionGuide page="profile" />
 
        
         <motion.div variants={cardVariants} custom={0} initial="hidden" animate="visible"
@@ -249,7 +260,7 @@ const ProfilePage = () => {
                 </motion.form>
               ) : (
                 <motion.div key="pw-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  style={{ padding: '20px 22px' }}>
+                  style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: T.card, borderRadius: 12, border: `1px solid ${T.border}` }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: T.accentLo, display: 'flex', alignItems: 'center', justifyContent: 'center', color: T.accent, flexShrink: 0 }}><FiLock size={14} /></div>
                     <div>
@@ -257,6 +268,17 @@ const ProfilePage = () => {
                       <p style={{ margin: '2px 0 0', fontSize: 12, color: T.muted }}>Click "Change" to update your password</p>
                     </div>
                   </div>
+                  {[
+                    { label: 'Sign-in method', value: user?.authProvider === 'google' ? 'Google OAuth' : 'Email & password' },
+                    { label: 'Session storage', value: 'HttpOnly secure cookies' },
+                    { label: 'Last login', value: user?.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Just now' },
+                    { label: 'Account created', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—' },
+                  ].map((row) => (
+                    <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: T.card, borderRadius: 10, border: `1px solid ${T.border}` }}>
+                      <span style={{ fontSize: 11, color: T.muted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{row.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: T.subtle }}>{row.value}</span>
+                    </div>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -279,7 +301,9 @@ const ProfilePage = () => {
               {[
                 'Unlimited polls & questions',
                 'Real-time response analytics',
-                'Anonymous & authenticated modes',
+                'PIN-protected & domain-restricted polls',
+                'Anti-cheat quiz mode with shuffle',
+                'HttpOnly cookie authentication',
               ].map((f) => (
                 <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: T.subtle }}>
                   <div style={{ width: 16, height: 16, borderRadius: 5, background: T.accentLo, border: `1px solid ${T.accentMd}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

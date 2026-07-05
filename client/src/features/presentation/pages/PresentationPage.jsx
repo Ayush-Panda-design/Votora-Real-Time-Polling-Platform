@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FiArrowLeft, FiArrowRight, FiX, FiUsers } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
 import api from '../../../services/api';
-import { connectSocket } from '../../../socket/socket';
-import { SOCKET_EVENTS } from '../../../utils/constants';
+import usePollSocket from '../../../hooks/usePollSocket';
 import { CHART_COLORS, buildPollUrl } from '../../../utils/helpers';
+import notify from '../../../utils/notify';
 import Spinner from '../../../components/ui/Spinner';
 import Logo from '../../../components/ui/Logo';
+import { PremiumBackground } from '../../../components/ui/PremiumUI';
+import SectionGuide from '../../../components/ui/SectionGuide';
 
 const PresentationPage = () => {
   const { id }       = useParams();
@@ -28,27 +30,26 @@ const PresentationPage = () => {
         ]);
         setPoll(pollRes.data.poll);
         setAnalytics(analyticsRes.data.stats);
-      } catch (e) {
+      } catch {
         navigate('/dashboard');
       } finally {
         setLoading(false);
       }
     };
     load();
+  }, [id, navigate]);
 
-    const socket = connectSocket();
-    socket.emit(SOCKET_EVENTS.JOIN_POLL, id);
-    socket.on(SOCKET_EVENTS.ANALYTICS_UPDATE, (updated) => setAnalytics(updated));
-    socket.on(SOCKET_EVENTS.NEW_RESPONSE, () => {});
-    socket.on(SOCKET_EVENTS.PARTICIPANT_COUNT, ({ count }) => setParticipants(count));
-
-    return () => {
-      socket.emit(SOCKET_EVENTS.LEAVE_POLL, id);
-      socket.off(SOCKET_EVENTS.ANALYTICS_UPDATE);
-      socket.off(SOCKET_EVENTS.NEW_RESPONSE);
-      socket.off(SOCKET_EVENTS.PARTICIPANT_COUNT);
-    };
-  }, [id]);
+  usePollSocket(id, {
+    onAnalyticsUpdate: (updated) => setAnalytics(updated),
+    onParticipantCount: ({ count }) => setParticipants(count),
+    onPollExpired: () => notify.warning('Poll expired', { icon: '⏰' }),
+    onTimerStarted: ({ endTime }) => {
+      const end = new Date(endTime);
+      if (end > new Date()) {
+        setPoll((p) => (p ? { ...p, timerEndTime: endTime } : p));
+      }
+    },
+  }, { enabled: Boolean(id) && !loading });
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Spinner size="lg" /></div>;
 
@@ -58,10 +59,7 @@ const PresentationPage = () => {
 
   return (
     <div className="min-h-screen bg-[#121212] flex flex-col overflow-hidden relative">
-      <div className="global-bg">
-        <div className="global-bg-glow" />
-        <div className="global-bg-grid" />
-      </div>
+      <PremiumBackground />
 
       {/* Top bar */}
       <div className="flex items-center justify-between px-8 py-4 border-b border-white/10 relative z-10">
@@ -79,6 +77,10 @@ const PresentationPage = () => {
             <FiX size={20} />
           </button>
         </div>
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-6 pt-2">
+        <SectionGuide page="presentation" defaultOpen={false} />
       </div>
 
       {/* Main slide */}

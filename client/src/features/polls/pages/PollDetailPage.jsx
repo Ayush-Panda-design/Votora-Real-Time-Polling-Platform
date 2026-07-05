@@ -1,32 +1,54 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { fetchPollById, publishPoll, deletePoll } from '../pollSlice';
-import { motion } from 'framer-motion';
+import { fetchPollById, publishPoll, deletePoll, updatePollInList, clearCurrentPoll } from '../pollSlice';
+import usePollSocket from '../../../hooks/usePollSocket';
 import { FiArrowLeft, FiBarChart2, FiShare2, FiEdit, FiTrash2, FiMonitor } from 'react-icons/fi';
 import Badge from '../../../components/ui/Badge';
-import Button from '../../../components/ui/Button';
 import Spinner from '../../../components/ui/Spinner';
-import { formatDate, timeUntilExpiry } from '../../../utils/formatters';
+import { timeUntilExpiry } from '../../../utils/formatters';
 import { buildPollUrl, copyToClipboard } from '../../../utils/helpers';
-import toast from 'react-hot-toast';
+import notify from '../../../utils/notify';
+import SectionGuide from '../../../components/ui/SectionGuide';
 
 const PollDetailPage = () => {
   const { id }     = useParams();
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
-  const { currentPoll: poll, loading } = useSelector((s) => s.polls);
+  const { currentPoll: poll, loading, error } = useSelector((s) => s.polls);
 
-  useEffect(() => { dispatch(fetchPollById(id)); }, [id]);
+  useEffect(() => {
+    dispatch(clearCurrentPoll());
+    dispatch(fetchPollById(id));
+  }, [id, dispatch]);
 
-  if (loading || !poll) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  usePollSocket(id, {
+    onPollStatsUpdate: ({ pollId, ...stats }) => dispatch(updatePollInList({ pollId, ...stats })),
+    onNewResponse: ({ totalResponses }) => dispatch(updatePollInList({ pollId: id, totalResponses })),
+    onPollExpired: () => dispatch(updatePollInList({ pollId: id, status: 'expired' })),
+    onPollPublished: () => dispatch(updatePollInList({ pollId: id, isPublished: true, status: 'published' })),
+  });
 
-  const handleShare   = async () => { const ok = await copyToClipboard(buildPollUrl(poll.pollCode)); toast.success(ok ? 'Link copied!' : buildPollUrl(poll.pollCode)); };
-  const handlePublish = async () => { const res = await dispatch(publishPoll(id)); if (publishPoll.fulfilled.match(res)) toast.success('Results published!'); };
+  if (loading || (poll && poll._id !== id)) {
+    return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
+  }
+
+  if (!poll) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20">
+        <p className="text-gray-400 mb-4">{error || 'Poll not found'}</p>
+        <Link to="/dashboard" className="text-cyan-400 hover:text-cyan-300">Back to dashboard</Link>
+      </div>
+    );
+  }
+
+  const handleShare   = async () => { const ok = await copyToClipboard(buildPollUrl(poll.pollCode)); notify.success(ok ? 'Link copied!' : buildPollUrl(poll.pollCode)); };
+  const handlePublish = async () => { const res = await dispatch(publishPoll(id)); if (publishPoll.fulfilled.match(res)) notify.success('Results published!'); };
   const handleDelete  = async () => { if (!confirm('Delete poll?')) return; await dispatch(deletePoll(id)); navigate('/dashboard'); };
 
   return (
     <div className="max-w-6xl mx-auto">
+      <SectionGuide page="poll-detail" />
       <div className="flex items-center gap-4 mb-8">
         <Link to="/dashboard" className="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-all"><FiArrowLeft size={20} /></Link>
         <div className="flex-1">
