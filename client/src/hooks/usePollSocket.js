@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { connectSocket, getSocket } from '../socket/socket';
+import { connectSocket } from '../socket/socket';
 import { SOCKET_EVENTS } from '../utils/constants';
 
 /**

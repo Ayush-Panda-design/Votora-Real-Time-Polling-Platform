@@ -9,12 +9,13 @@ const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
   const user = useSelector((s) => s.auth.user);
+  const userId = user?._id ?? null;
   const dispatch = useDispatch();
   const socketRef = useRef(null);
   const prevUserIdRef = useRef(null);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       reconnectSocket();
       socketRef.current = getSocket();
     } else if (prevUserIdRef.current) {
@@ -22,8 +23,8 @@ export const SocketProvider = ({ children }) => {
       disconnectSocket();
       socketRef.current = null;
     }
-    prevUserIdRef.current = user?._id ?? null;
-  }, [user?._id]);
+    prevUserIdRef.current = userId;
+  }, [userId]);
 
   useUserSocket({
     onPollStatsUpdate: ({ pollId, ...stats }) => {
