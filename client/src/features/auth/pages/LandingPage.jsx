@@ -17,6 +17,21 @@ import {
 } from 'react-icons/fi';
 import { HiOutlineChartBar } from 'react-icons/hi2';
 import Logo from '../../../components/ui/Logo';
+import LandingBackground from '../components/landing/LandingBackground';
+import LandingHowItWorks from '../components/landing/LandingHowItWorks';
+import LandingMarquee from '../components/landing/LandingMarquee';
+import LandingDashboardIllustration from '../components/landing/LandingDashboardIllustration';
+import '../components/landing/landing.css';
+
+const LIVE_APP = 'https://votora-real-time-polling-platform-psi.vercel.app';
+const LIVE_API = 'https://votora-real-time-polling-platform.onrender.com';
+
+const NAV_ITEMS = [
+  { label: 'Features', href: '#features' },
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Gallery', href: '#gallery' },
+  { label: 'Reviews', href: '#reviews' },
+];
 
 const features = [
   { icon: <FiZap />, title: 'Realtime Polling', desc: 'Votes update instantly across every connected device.' },
@@ -315,19 +330,8 @@ const LandingPage = () => {
         }
       `}</style>
 
-      {/* BG */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <div style={{
-          position: 'absolute', top: -200, left: '35%', width: 750, height: 450,
-          background: 'radial-gradient(ellipse, rgba(37,99,235,0.07) 0%, transparent 70%)',
-          filter: 'blur(70px)',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: '15%', right: 0, width: 500, height: 500,
-          background: 'radial-gradient(ellipse, rgba(37,99,235,0.045) 0%, transparent 70%)',
-          filter: 'blur(90px)',
-        }} />
-      </div>
+      {/* BG — animated orbs + grid (animation 8) */}
+      <LandingBackground />
 
       {/* ── MOBILE MENU OVERLAY ── */}
       <div className={`mobile-overlay${mobileMenuOpen ? ' open' : ''}`}>
@@ -337,16 +341,27 @@ const LandingPage = () => {
         >
           <FiX />
         </button>
-        {['Features', 'Gallery', 'Reviews'].map((item) => (
+        {NAV_ITEMS.map((item) => (
           <a
-            key={item}
-            href={`#${item.toLowerCase()}`}
+            key={item.label}
+            href={item.href}
             onClick={() => setMobileMenuOpen(false)}
             style={{ fontSize: 22, fontWeight: 700, color: '#eeebe5', letterSpacing: '-0.02em', fontFamily: "'Playfair Display', serif" }}
           >
-            {item}
+            {item.label}
           </a>
         ))}
+        <a
+          href={LIVE_APP}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setMobileMenuOpen(false)}
+          className="landing-nav-live"
+          style={{ fontSize: 13 }}
+        >
+          <span className="landing-live-pulse" style={{ width: 6, height: 6 }} />
+          Live demo
+        </a>
         <div style={{ width: '40px', height: 1, background: '#2c2c2c' }} />
         <Link to="/login" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: 14, color: '#6e6a64', fontWeight: 500 }}>
           Login
@@ -372,14 +387,18 @@ const LandingPage = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
             <Logo />
             <nav className="desktop-nav">
-              {['Features', 'Gallery', 'Reviews'].map((item) => (
-                <a key={item} href={`#${item.toLowerCase()}`} className="nav-link">{item}</a>
+              {NAV_ITEMS.map((item) => (
+                <a key={item.label} href={item.href} className="nav-link">{item.label}</a>
               ))}
             </nav>
           </div>
 
           {/* Desktop auth */}
           <div className="desktop-auth">
+            <a href={LIVE_APP} target="_blank" rel="noopener noreferrer" className="landing-nav-live">
+              <span className="landing-live-pulse" style={{ width: 6, height: 6 }} />
+              Live demo
+            </a>
             <Link to="/login" className="nav-link" style={{ padding: '8px 14px' }}>Login</Link>
             <Link to="/signup" className="btn-dark" style={{ padding: '9px 20px', borderRadius: 10 }}>Get Started</Link>
           </div>
@@ -434,9 +453,15 @@ const LandingPage = () => {
 
               {/* Buttons */}
               <div className="hero-btns" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 48 }}>
-                <button onClick={() => navigate('/signup')} className="btn-dark" style={{ padding: '13px 28px', borderRadius: 12 }}>
+                <motion.button
+                  onClick={() => navigate('/signup')}
+                  className="btn-dark"
+                  style={{ padding: '13px 28px', borderRadius: 12 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   Start Free <FiArrowRight style={{ fontSize: 13 }} />
-                </button>
+                </motion.button>
                 <Link to="/login" className="btn-outline" style={{ padding: '13px 28px', borderRadius: 12 }}>Sign In</Link>
               </div>
 
@@ -555,7 +580,9 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── FEATURES ── */}
+      <LandingMarquee />
+
+      <LandingHowItWorks />
       <section id="features" style={{ position: 'relative', zIndex: 1, paddingBottom: 96 }}>
         <div className="container">
           <div className="divider" style={{ marginBottom: 72 }} />
@@ -588,7 +615,8 @@ const LandingPage = () => {
         </div>
       </section>
 
-     
+      <LandingDashboardIllustration />
+
       <section id="gallery" style={{ position: 'relative', zIndex: 1, paddingBottom: 96 }}>
         <div className="container">
           <div className="gallery-header" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 40, flexWrap: 'wrap', gap: 20 }}>
@@ -709,6 +737,7 @@ const LandingPage = () => {
             background: '#212121', padding: 'clamp(48px, 7vw, 80px) clamp(24px, 5vw, 56px)',
             overflow: 'hidden', textAlign: 'center',
           }}>
+            <div className="landing-cta-shimmer" aria-hidden="true" />
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 220, height: 1, background: 'linear-gradient(to right, transparent, #5b8ef0, transparent)' }} />
             <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 560, height: 280, background: 'radial-gradient(circle, rgba(37,99,235,0.09) 0%, transparent 70%)', filter: 'blur(40px)' }} />
             <div style={{ position: 'relative', zIndex: 2 }}>
@@ -737,19 +766,11 @@ const LandingPage = () => {
               </div>
               <span style={{ fontSize: 13, color: '#3e3a36', fontWeight: 500 }}>Votora</span>
             </div>
-            <p style={{ fontSize: 12, color: '#303030' }}>© 2026 Votora. Built for modern realtime engagement.</p>
-            <nav style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              {['Privacy', 'Terms', 'Status'].map((l) => (
-                <a
-                  key={l}
-                  href="#"
-                  style={{ fontSize: 12, color: '#3e3a36', transition: 'color 0.2s' }}
-                  onMouseEnter={(e) => (e.target.style.color = '#6e6a64')}
-                  onMouseLeave={(e) => (e.target.style.color = '#3e3a36')}
-                >
-                  {l}
-                </a>
-              ))}
+            <p style={{ fontSize: 12, color: '#303030' }}>© 2026 Votora · Built for modern realtime engagement</p>
+            <nav style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+              <a href={LIVE_APP} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#5b8ef0' }}>Live app</a>
+              <a href={`${LIVE_API}/api/health`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#5b8ef0' }}>API status</a>
+              <a href="https://github.com/Ayush-Panda-design/Votora-Real-Time-Polling-Platform" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#3e3a36' }}>GitHub</a>
             </nav>
           </div>
         </div>
