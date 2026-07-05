@@ -5,7 +5,10 @@ const errorMiddleware = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 
-  console.error(`[Error] ${req.method} ${req.url}:`, err);
+  const isExpectedClientError = err instanceof ApiError && err.statusCode < 500;
+  if (!isExpectedClientError) {
+    console.error(`[Error] ${req.method} ${req.url}:`, err);
+  }
 
 
   if (err.name === 'CastError') {

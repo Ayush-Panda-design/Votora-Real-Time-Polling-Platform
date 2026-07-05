@@ -9,16 +9,17 @@ import {
   getPublicPollService,
   getPublicResultsService,
   duplicatePollService,
+  unlockPublicPollService,
 } from '../services/poll.service.js';
-import { emitPollPublished } from '../services/socket.service.js';
+import { emitPollPublished, emitPollListChanged } from '../services/socket.service.js';
 
 export const createPoll = asyncHandler(async (req, res) => {
   const poll = await createPollService(req.body, req.user._id);
+  emitPollListChanged(req.user._id.toString(), 'created', poll);
   res.status(201).json({ success: true, poll });
 });
 
 export const getUserPolls = asyncHandler(async (req, res) => {
-  console.log(`[Debug] Fetching polls for user: ${req.user?._id}`);
   const polls = await getUserPollsService(req.user._id);
   res.status(200).json({ success: true, polls });
 });
@@ -34,18 +35,20 @@ export const updatePoll = asyncHandler(async (req, res) => {
 });
 
 export const deletePoll = asyncHandler(async (req, res) => {
-  await deletePollService(req.params.id, req.user._id);
+  const poll = await deletePollService(req.params.id, req.user._id);
+  emitPollListChanged(req.user._id.toString(), 'deleted', { _id: req.params.id, pollCode: poll?.pollCode });
   res.status(200).json({ success: true, message: 'Poll deleted' });
 });
 
 export const publishPoll = asyncHandler(async (req, res) => {
   const poll = await publishPollService(req.params.id, req.user._id);
-  emitPollPublished(poll._id.toString());
+  emitPollPublished(poll._id.toString(), req.user._id.toString(), poll);
   res.status(200).json({ success: true, poll });
 });
 
 export const duplicatePoll = asyncHandler(async (req, res) => {
   const poll = await duplicatePollService(req.params.id, req.user._id);
+  emitPollListChanged(req.user._id.toString(), 'created', poll);
   res.status(201).json({ success: true, poll });
 });
 
@@ -57,4 +60,9 @@ export const getPublicPoll = asyncHandler(async (req, res) => {
 export const getPublicResults = asyncHandler(async (req, res) => {
   const data = await getPublicResultsService(req.params.pollCode);
   res.status(200).json({ success: true, ...data });
+});
+
+export const unlockPublicPoll = asyncHandler(async (req, res) => {
+  const poll = await unlockPublicPollService(req.params.pollCode, req.body.accessCode);
+  res.status(200).json({ success: true, poll });
 });

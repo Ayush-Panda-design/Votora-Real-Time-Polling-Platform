@@ -49,6 +49,26 @@ const pollSlice = createSlice({
       const poll = state.polls.find((p) => p._id === action.payload);
       if (poll) poll.totalResponses = (poll.totalResponses || 0) + 1;
     },
+    updatePollInList: (state, action) => {
+      const { pollId, ...updates } = action.payload;
+      const idx = state.polls.findIndex((p) => p._id === pollId);
+      if (idx !== -1) state.polls[idx] = { ...state.polls[idx], ...updates };
+      if (state.currentPoll?._id === pollId) {
+        state.currentPoll = { ...state.currentPoll, ...updates };
+      }
+    },
+    addPollToList: (state, action) => {
+      if (!state.polls.find((p) => p._id === action.payload._id)) {
+        state.polls.unshift(action.payload);
+      }
+    },
+    removePollFromList: (state, action) => {
+      state.polls = state.polls.filter((p) => p._id !== action.payload);
+    },
+    clearCurrentPoll: (state) => {
+      state.currentPoll = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     const pending  = (state)         => { state.loading = true; state.error = null; };
@@ -95,5 +115,5 @@ const pollSlice = createSlice({
   },
 });
 
-export const { clearPollError, setCurrentPoll, incrementResponseCount } = pollSlice.actions;
+export const { clearPollError, setCurrentPoll, clearCurrentPoll, incrementResponseCount, updatePollInList, addPollToList, removePollFromList } = pollSlice.actions;
 export default pollSlice.reducer;

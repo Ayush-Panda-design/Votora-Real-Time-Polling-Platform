@@ -8,6 +8,10 @@ export const createPollValidator = [
   body('expiresAt').optional({ nullable: true }).isISO8601().withMessage('Invalid expiry date format'),
   body('timeLimitSystem').optional().isIn(['none', 'expiry', 'timer']),
   body('timerDuration').optional({ nullable: true }).isNumeric(),
+  body('accessCode').optional({ values: 'falsy' }).isLength({ min: 4, max: 12 }).withMessage('Access PIN must be 4–12 characters'),
+  body('allowedDomains').optional().isArray(),
+  body('shuffleOptions').optional().isBoolean(),
+  body('maxResponses').optional({ nullable: true }).isInt({ min: 1 }),
 ];
 
 export const updatePollValidator = [

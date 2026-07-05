@@ -3,14 +3,31 @@ import Poll from '../models/Poll.js';
 import Analytics from '../models/Analytics.js';
 import ApiError from '../utils/ApiError.js';
 import calculateAnalytics from '../utils/calculateAnalytics.js';
+import { validateEmailDomain } from '../utils/pollSecurity.js';
+import validateResponseAnswers from '../utils/validateResponseAnswers.js';
+import User from '../models/User.js';
 
 export const submitResponseService = async (pollId, answers, userId, ipAddress, isAutoSubmitted = false) => {
   const poll = await Poll.findById(pollId);
   if (!poll) throw new ApiError(404, 'Poll not found');
 
-
   if (poll.isQuiz && !userId) {
     throw new ApiError(401, 'You must be logged in to participate in this quiz.');
+  }
+
+  if (poll.requiresAuth && !userId) {
+    throw new ApiError(401, 'This poll requires you to be logged in.');
+  }
+
+  if (poll.allowedDomains?.length && userId) {
+    const user = await User.findById(userId).select('email');
+    if (!validateEmailDomain(user?.email, poll.allowedDomains)) {
+      throw new ApiError(403, `Only @${poll.allowedDomains.join(', @')} email addresses can participate.`);
+    }
+  }
+
+  if (poll.maxResponses && poll.totalResponses >= poll.maxResponses) {
+    throw new ApiError(410, 'This poll has reached its maximum number of responses.');
   }
   
   if (poll.timeLimitSystem === 'expiry' && poll.expiresAt && new Date() > new Date(poll.expiresAt)) {
@@ -32,14 +49,16 @@ export const submitResponseService = async (pollId, answers, userId, ipAddress, 
 
  
   if (userId) {
-    const existingResponse = await Response.findOne({ pollId, respondent: userId });
-    if (existingResponse) throw new ApiError(400, 'You have already responded to this poll.');
-  } else if (ipAddress) {
-    
-    const existingResponse = await Response.findOne({ pollId, ipAddress });
-    if (existingResponse) throw new ApiError(400, 'You have already responded to this poll from this device.');
+    const existingByUser = await Response.findOne({ pollId, respondent: userId });
+    if (existingByUser) throw new ApiError(400, 'You have already responded to this poll.');
   }
 
+  if (ipAddress) {
+    const existingByIp = await Response.findOne({ pollId, ipAddress });
+    if (existingByIp) throw new ApiError(400, 'You have already responded to this poll from this device.');
+  }
+
+  validateResponseAnswers(poll, answers);
 
   if (!isAutoSubmitted) {
     const mandatoryQuestions = poll.questions
@@ -75,7 +94,13 @@ export const submitResponseService = async (pollId, answers, userId, ipAddress, 
   const stats = await calculateAnalytics(pollId);
   await Analytics.findOneAndUpdate(
     { pollId },
-    { totalResponses: stats.totalResponses, questionStats: stats.questionStats, updatedAt: new Date() },
+    {
+      totalResponses: stats.totalResponses,
+      questionStats: stats.questionStats,
+      responseTimeline: stats.responseTimeline,
+      peakActivity: stats.peakActivity,
+      updatedAt: new Date(),
+    },
     { upsert: true, new: true }
   );
 
@@ -94,4 +119,15 @@ export const getResponsesService = async (pollId, userId) => {
     throw new ApiError(403, 'Not authorised');
 
   return Response.find({ pollId }).populate('respondent', 'name email');
+};
+
+export const getResponseByIdService = async (pollId, responseId, userId) => {
+  const poll = await Poll.findById(pollId);
+  if (!poll) throw new ApiError(404, 'Poll not found');
+  if (poll.createdBy.toString() !== userId.toString())
+    throw new ApiError(403, 'Not authorised');
+
+  const response = await Response.findOne({ _id: responseId, pollId }).populate('respondent', 'name email');
+  if (!response) throw new ApiError(404, 'Response not found');
+  return response;
 };

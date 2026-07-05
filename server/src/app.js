@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 
@@ -10,9 +11,14 @@ import responseRoutes from './routes/response.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import errorMiddleware from './middleware/error.middleware.js';
 import { apiLimiter, authLimiter } from './middleware/rateLimit.middleware.js';
+import { csrfProtection } from './middleware/csrf.middleware.js';
 
 const app = express();
 
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
+}));
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -22,13 +28,11 @@ app.use(cors({
 
 
 app.use('/api', apiLimiter);
-
-
 app.use('/api/auth', authLimiter);
+app.use('/api', csrfProtection);
 
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 app.use('/public', express.static('public'));
 

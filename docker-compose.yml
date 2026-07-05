@@ -1,0 +1,38 @@
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    ports:
+      - "5013:5013"
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/votora
+      PORT: 5013
+      JWT_SECRET: change_me_in_production
+      JWT_EXPIRES_IN: 7d
+      CLIENT_URL: http://localhost:5173
+      NODE_ENV: production
+    depends_on:
+      - mongodb
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: http://localhost:5013/api
+        VITE_SOCKET_URL: http://localhost:5013
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+volumes:
+  mongodb_data:

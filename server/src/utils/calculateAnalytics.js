@@ -45,6 +45,32 @@ const calculateAnalytics = async (pollId) => {
     },
   ]);
 
+  const timelineAgg = await Response.aggregate([
+    { $match: { pollId: objectId } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: '%Y-%m-%d %H:00', date: '$submittedAt' },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  const responseTimeline = timelineAgg.map((item) => ({
+    time: item._id,
+    count: item.count,
+  }));
+
+  const peakBucket = timelineAgg.reduce(
+    (best, item) => (!best || item.count > best.count ? item : best),
+    null
+  );
+  const peakActivity = peakBucket
+    ? { time: peakBucket._id, count: peakBucket.count }
+    : null;
+
   // Convert aggregation result to a map for O(1) lookups
   const aggMap = {};
   aggResult.forEach((item) => {
@@ -91,7 +117,7 @@ const calculateAnalytics = async (pollId) => {
     };
   });
 
-  return { totalResponses, questionStats };
+  return { totalResponses, questionStats, responseTimeline, peakActivity };
 };
 
 export default calculateAnalytics;

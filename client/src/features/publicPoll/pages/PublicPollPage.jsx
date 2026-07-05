@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '../../../services/api';
-import { connectSocket } from '../../../socket/socket';
-import { SOCKET_EVENTS } from '../../../utils/constants';
+import usePollSocket from '../../../hooks/usePollSocket';
 import Spinner from '../../../components/ui/Spinner';
 import Button from '../../../components/ui/Button';
-import toast from 'react-hot-toast';
+import notify from '../../../utils/notify';
 import Logo from '../../../components/ui/Logo';
+import { PremiumBackground } from '../../../components/ui/PremiumUI';
+import SectionGuide from '../../../components/ui/SectionGuide';
 
 const PublicPollPage = () => {
   const { pollCode } = useParams();
@@ -25,11 +26,43 @@ const PublicPollPage = () => {
   const [error, setError] = useState('');
   const [participants, setParticipants] = useState(0);
   const [isCheatSubmitted, setIsCheatSubmitted] = useState(false);
-
-  // Timer States
+  const [locked, setLocked] = useState(false);
+  const [accessPin, setAccessPin] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
   const [activeTimerEnd, setActiveTimerEnd] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
+
+  const generatePayload = useCallback(() => {
+    if (!poll?.questions) return [];
+    return poll.questions.map((_, qIdx) => ({
+      questionIndex: qIdx,
+      selectedOption: answers[qIdx] || null,
+    }));
+  }, [poll, answers]);
+
+  const handleAutoSubmit = useCallback(async (isCheat = false) => {
+    if (autoSubmitTriggered || !poll?._id) return;
+    setAutoSubmitTriggered(true);
+
+    const payload = generatePayload();
+    try {
+      setSubmitting(true);
+      const res = await api.post(`/responses/${poll._id}`, { answers: payload, isAutoSubmitted: true });
+      if (res.data.quizResults) setQuizResults(res.data.quizResults);
+      setSubmitted(true);
+
+      if (isCheat) {
+        notify.error('Quiz auto-submitted because you left the page!', { duration: 6000 });
+      } else {
+        notify.error("Time's up! Your response was auto-submitted.", { duration: 6000 });
+      }
+    } catch (err) {
+      console.error('Auto-submit failed', err);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [autoSubmitTriggered, poll, generatePayload]);
 
   useEffect(() => {
     const fetchPoll = async () => {
@@ -40,7 +73,13 @@ const PublicPollPage = () => {
           navigate(`/poll/${pollCode}/results`);
           return;
         }
+        if (p.locked || (p.requiresAccessCode && !p.questions?.length)) {
+          setPoll(p);
+          setLocked(true);
+          return;
+        }
         setPoll(p);
+        setLocked(false);
         if (p.timeLimitSystem === 'timer' && p.timerEndTime) {
           const end = new Date(p.timerEndTime);
           if (end > new Date()) setActiveTimerEnd(end);
@@ -59,32 +98,41 @@ const PublicPollPage = () => {
       }
     };
     fetchPoll();
-  }, [pollCode]);
+  }, [pollCode, navigate]);
 
-  useEffect(() => {
-    if (!poll) return;
+  const handleUnlock = async (e) => {
+    e.preventDefault();
+    if (!accessPin.trim()) return notify.error('Enter the access PIN');
+    setUnlocking(true);
+    try {
+      const res = await api.post(`/polls/public/${pollCode}/unlock`, { accessCode: accessPin });
+      setPoll(res.data.poll);
+      setLocked(false);
+      const p = res.data.poll;
+      if (p.timeLimitSystem === 'timer' && p.timerEndTime) {
+        const end = new Date(p.timerEndTime);
+        if (end > new Date()) setActiveTimerEnd(end);
+      } else if (p.timeLimitSystem === 'expiry' && p.expiresAt) {
+        const end = new Date(p.expiresAt);
+        if (end > new Date()) setActiveTimerEnd(end);
+      }
+      notify.success('Access granted');
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'Invalid PIN');
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
-    const socket = connectSocket();
-    socket.emit(SOCKET_EVENTS.JOIN_POLL, poll._id);
-
-    socket.on(SOCKET_EVENTS.PARTICIPANT_COUNT, ({ count }) =>
-      setParticipants(count)
-    );
-
-    socket.on(SOCKET_EVENTS.POLL_EXPIRED, () => setExpired(true));
-    
-    socket.on(SOCKET_EVENTS.TIMER_STARTED, ({ endTime }) => {
+  usePollSocket(poll?._id, {
+    onParticipantCount: ({ count }) => setParticipants(count),
+    onPollExpired: () => setExpired(true),
+    onPollPublished: () => navigate(`/poll/${pollCode}/results`),
+    onTimerStarted: ({ endTime }) => {
       const end = new Date(endTime);
       if (end > new Date()) setActiveTimerEnd(end);
-    });
-
-    return () => {
-      socket.emit(SOCKET_EVENTS.LEAVE_POLL, poll._id);
-      socket.off(SOCKET_EVENTS.PARTICIPANT_COUNT);
-      socket.off(SOCKET_EVENTS.POLL_EXPIRED);
-      socket.off(SOCKET_EVENTS.TIMER_STARTED);
-    };
-  }, [poll]);
+    },
+  }, { enabled: Boolean(poll?._id) && !locked });
 
   useEffect(() => {
     if (!activeTimerEnd) return;
@@ -100,7 +148,7 @@ const PublicPollPage = () => {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [activeTimerEnd]);
+  }, [activeTimerEnd, handleAutoSubmit]);
 
 
   useEffect(() => {
@@ -126,40 +174,10 @@ const PublicPollPage = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [poll, submitted, submitting, answers]);
+  }, [poll, submitted, submitting, handleAutoSubmit]);
 
   const handleSelect = (qIdx, option) =>
     setAnswers((a) => ({ ...a, [qIdx]: option }));
-
-  const generatePayload = () => {
-    return poll.questions.map((_, qIdx) => ({
-      questionIndex: qIdx,
-      selectedOption: answers[qIdx] || null,
-    }));
-  };
-
-  const handleAutoSubmit = async (isCheat = false) => {
-    if (autoSubmitTriggered) return;
-    setAutoSubmitTriggered(true);
-
-    const payload = generatePayload();
-    try {
-      setSubmitting(true);
-      const res = await api.post(`/responses/${poll._id}`, { answers: payload, isAutoSubmitted: true });
-      if (res.data.quizResults) setQuizResults(res.data.quizResults);
-      setSubmitted(true);
-      
-      if (isCheat) {
-        toast.error('Quiz auto-submitted because you left the page!', { duration: 6000 });
-      } else {
-        toast.error("Time's up! Your response was auto-submitted.", { duration: 6000 });
-      }
-    } catch (err) {
-      console.error('Auto-submit failed', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleSubmit = async () => {
     const missing = poll.questions
@@ -167,7 +185,7 @@ const PublicPollPage = () => {
       .filter((q) => q.required && !answers[q.index]);
 
     if (missing.length) {
-      toast.error(`Please answer: "${missing[0].question}"`);
+      notify.error(`Please answer: "${missing[0].question}"`);
       return;
     }
 
@@ -180,9 +198,9 @@ const PublicPollPage = () => {
       if (res.data.quizResults) setQuizResults(res.data.quizResults);
       setSubmitted(true);
 
-      toast.success('Response submitted!');
+      notify.success('Response submitted!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Submission failed');
+      notify.error(err.response?.data?.message || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
@@ -190,8 +208,31 @@ const PublicPollPage = () => {
 
   if (loading)
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="min-h-screen bg-[#080808] flex items-center justify-center">
         <Spinner size="lg" />
+      </div>
+    );
+
+  if (locked && poll)
+    return (
+      <div className="min-h-screen bg-[#080808] flex items-center justify-center p-6 relative overflow-hidden">
+        <PremiumBackground />
+        <form onSubmit={handleUnlock} className="premium-glass-strong p-8 sm:p-10 max-w-md w-full text-center relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center mx-auto mb-6 text-3xl">🔐</div>
+          <h2 className="text-2xl font-black text-white mb-2">{poll.title}</h2>
+          <p className="text-gray-500 text-sm mb-8">This poll is PIN-protected. Enter the access code from your host to continue.</p>
+          <input
+            value={accessPin}
+            onChange={(e) => setAccessPin(e.target.value)}
+            placeholder="Enter access PIN"
+            maxLength={12}
+            className="premium-input text-center text-lg tracking-widest mb-4"
+            autoFocus
+          />
+          <button type="submit" disabled={unlocking} className="premium-btn w-full">
+            {unlocking ? 'Verifying…' : 'Unlock Poll'}
+          </button>
+        </form>
       </div>
     );
 
@@ -325,10 +366,7 @@ const PublicPollPage = () => {
 
   return (
     <div className="min-h-screen bg-surface relative overflow-hidden">
-      <div className="global-bg">
-        <div className="global-bg-glow" />
-        <div className="global-bg-grid" />
-      </div>
+      <PremiumBackground />
 
       {}
       <header className="border-b border-surface-border py-4 px-6 relative z-10">
@@ -369,6 +407,8 @@ const PublicPollPage = () => {
               </span>
             </div>
           </div>
+
+          <SectionGuide page="public-poll" defaultOpen={false} />
 
           {}
           <div className="space-y-6">

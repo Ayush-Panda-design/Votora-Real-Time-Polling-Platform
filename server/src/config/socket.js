@@ -1,13 +1,12 @@
+import cookie from 'cookie';
+import jwt from 'jsonwebtoken';
 import { Server } from 'socket.io';
 import { registerPollSocketHandlers } from '../sockets/poll.socket.js';
 import { registerAnalyticsSocketHandlers } from '../sockets/analytics.socket.js';
+import { registerUserSocketHandlers } from '../sockets/user.socket.js';
 
 let io;
 
-/**
- * Initialise Socket.IO on the HTTP server.
- * Stores the instance so it can be imported elsewhere.
- */
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
@@ -17,12 +16,26 @@ export const initSocket = (httpServer) => {
     },
   });
 
-  io.on('connection', (socket) => {
-    console.log(`🔌 Socket connected: ${socket.id}`);
+  io.use((socket, next) => {
+    try {
+      const raw = socket.handshake.headers.cookie || '';
+      const cookies = cookie.parse(raw);
+      if (cookies.token) {
+        const decoded = jwt.verify(cookies.token, process.env.JWT_SECRET);
+        socket.userId = decoded.id;
+      }
+    } catch {
+      socket.userId = null;
+    }
+    next();
+  });
 
-    // Register domain-specific handlers
+  io.on('connection', (socket) => {
+    console.log(`🔌 Socket connected: ${socket.id}${socket.userId ? ` (user ${socket.userId})` : ''}`);
+
     registerPollSocketHandlers(io, socket);
     registerAnalyticsSocketHandlers(io, socket);
+    registerUserSocketHandlers(io, socket);
 
     socket.on('disconnect', () => {
       console.log(`🔌 Socket disconnected: ${socket.id}`);
@@ -32,10 +45,6 @@ export const initSocket = (httpServer) => {
   return io;
 };
 
-/**
- * Returns the already-initialised Socket.IO instance.
- * Call this anywhere in the server code after initSocket().
- */
 export const getIO = () => {
   if (!io) throw new Error('Socket.IO not initialised!');
   return io;

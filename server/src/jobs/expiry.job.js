@@ -25,7 +25,7 @@ const startExpiryJob = () => {
 
     
         expiredPolls.forEach((poll) => {
-          emitPollExpired(poll._id.toString());
+          emitPollExpired(poll._id.toString(), poll.createdBy?.toString());
           console.log(`⏰ Poll expired: ${poll.title} (${poll.pollCode})`);
         });
       }

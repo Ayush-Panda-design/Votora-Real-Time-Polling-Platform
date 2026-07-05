@@ -7,3 +7,7 @@ build/
 *.log
 .DS_Store
 Thumbs.db
+
+# Uploaded avatars (keep directory via .gitkeep)
+server/public/uploads/avatars/*
+!server/public/uploads/avatars/.gitkeep

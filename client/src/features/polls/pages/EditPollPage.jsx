@@ -2,18 +2,17 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchPollById, updatePoll } from '../pollSlice';
-import { motion } from 'framer-motion';
-import { FiArrowLeft, FiPlus, FiTrash2 } from 'react-icons/fi';
-import toast from 'react-hot-toast';
-import Button from '../../../components/ui/Button';
+import { FiArrowLeft, FiTrash2, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import notify from '../../../utils/notify';
 import Input from '../../../components/ui/Input';
 import Spinner from '../../../components/ui/Spinner';
+import SectionGuide from '../../../components/ui/SectionGuide';
 
 const EditPollPage = () => {
   const { id }     = useParams();
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
-  const { currentPoll, loading } = useSelector((s) => s.polls);
+  const { loading } = useSelector((s) => s.polls);
   const [form, setForm] = useState(null);
 
   useEffect(() => {
@@ -30,7 +29,7 @@ const EditPollPage = () => {
         });
       }
     });
-  }, [id]);
+  }, [id, dispatch]);
 
   if (!form) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
 
@@ -41,6 +40,13 @@ const EditPollPage = () => {
   const removeOption = (qi, oi) => updateQ(qi, 'options', form.questions[qi].options.filter((_, i) => i !== oi));
   const addQuestion  = () => updateField('questions', [...form.questions, { question: '', options: ['', ''], required: true }]);
   const removeQuestion = (i) => updateField('questions', form.questions.filter((_, idx) => idx !== i));
+  const moveQuestion = (qIdx, direction) => {
+    const target = qIdx + direction;
+    if (target < 0 || target >= form.questions.length) return;
+    const qs = [...form.questions];
+    [qs[qIdx], qs[target]] = [qs[target], qs[qIdx]];
+    updateField('questions', qs);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,8 +57,8 @@ const EditPollPage = () => {
       questions: form.questions.map((q) => ({ ...q, options: q.options.filter(Boolean) })) 
     };
     const res = await dispatch(updatePoll({ id, data: payload }));
-    if (updatePoll.fulfilled.match(res)) { toast.success('Poll updated!'); navigate('/dashboard'); }
-    else toast.error(res.payload || 'Update failed');
+    if (updatePoll.fulfilled.match(res)) { notify.success('Poll updated!'); navigate('/dashboard'); }
+    else notify.error(res.payload || 'Update failed');
   };
 
   return (
@@ -74,6 +80,8 @@ const EditPollPage = () => {
           Save Changes
         </button>
       </div>
+
+      <SectionGuide page="edit" />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -126,6 +134,14 @@ const EditPollPage = () => {
                     <button type="button" onClick={() => updateQ(qi, 'required', !q.required)}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-all ${q.required ? 'border-[#3b82f6] bg-[#3b82f6]/10 text-white' : 'border-white/[0.06] bg-[#1a1a1a] text-[#6b6b6b] hover:text-white'}`}>
                       {q.required ? 'Mandatory' : 'Optional'}
+                    </button>
+                    <button type="button" onClick={() => moveQuestion(qi, -1)} disabled={qi === 0}
+                      className="text-gray-500 hover:text-white p-1 disabled:opacity-30" title="Move up">
+                      <FiChevronUp size={16} />
+                    </button>
+                    <button type="button" onClick={() => moveQuestion(qi, 1)} disabled={qi === form.questions.length - 1}
+                      className="text-gray-500 hover:text-white p-1 disabled:opacity-30" title="Move down">
+                      <FiChevronDown size={16} />
                     </button>
                     {form.questions.length > 1 && (
                       <button type="button" onClick={() => removeQuestion(qi)} className="text-red-400 hover:text-red-300">

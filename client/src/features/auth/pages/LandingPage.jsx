@@ -48,16 +48,17 @@ const gallery = [
   },
 ];
 
+const HERO_WORDS = ['Feels Instant', 'Looks Premium', 'Built for Realtime', 'Made for Communities'];
+
 const LandingPage = () => {
   const navigate = useNavigate();
 
-  const words = ['Feels Instant', 'Looks Premium', 'Built for Realtime', 'Made for Communities'];
   const [text, setText] = useState('');
   const [wordIndex, setWordIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const currentWord = words[wordIndex];
+    const currentWord = HERO_WORDS[wordIndex];
     const timeout = setTimeout(() => {
       if (!isDeleting) {
         setText(currentWord.substring(0, text.length + 1));
@@ -66,7 +67,7 @@ const LandingPage = () => {
         setText(currentWord.substring(0, text.length - 1));
         if (text === '') {
           setIsDeleting(false);
-          setWordIndex((prev) => (prev + 1) % words.length);
+          setWordIndex((prev) => (prev + 1) % HERO_WORDS.length);
         }
       }
     }, isDeleting ? 40 : 85);
@@ -113,11 +114,6 @@ const LandingPage = () => {
 
         .display { font-family: 'Playfair Display', Georgia, serif; }
 
-        .dot-grid {
-          background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px);
-          background-size: 30px 30px;
-        }
-
         .nav-link {
           font-size: 13px; color: #6e6a64; font-weight: 500;
           transition: color 0.2s; letter-spacing: 0.01em;
@@ -125,12 +121,13 @@ const LandingPage = () => {
         .nav-link:hover { color: #eeebe5; }
 
         .btn-dark {
-          background: #eeebe5; color: #111; border: none; cursor: pointer;
+          background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); color: #fff; border: none; cursor: pointer;
           font-family: 'Sora', sans-serif; font-weight: 600; font-size: 13.5px;
-          letter-spacing: 0.02em; transition: background 0.2s, transform 0.15s;
+          letter-spacing: 0.02em; transition: filter 0.2s, transform 0.15s, box-shadow 0.2s;
           display: inline-flex; align-items: center; gap: 8px;
+          box-shadow: 0 12px 32px rgba(6,182,212,0.22);
         }
-        .btn-dark:hover { background: #fff; transform: translateY(-1px); }
+        .btn-dark:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 16px 40px rgba(6,182,212,0.28); }
 
         .btn-outline {
           background: transparent; color: #7a7570; cursor: pointer;
@@ -148,8 +145,8 @@ const LandingPage = () => {
         .card:hover { border-color: #383838; background: #272727; transform: translateY(-3px); }
 
         .icon-box {
-          background: rgba(37,99,235,0.1); border: 1px solid rgba(37,99,235,0.18);
-          color: #5b8ef0; border-radius: 12px;
+          background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.2);
+          color: #22d3ee; border-radius: 12px;
           display: flex; align-items: center; justify-content: center; flex-shrink: 0;
         }
 
@@ -160,7 +157,7 @@ const LandingPage = () => {
 
         .label {
           font-size: 11px; font-weight: 600; letter-spacing: 0.13em;
-          text-transform: uppercase; color: #5b8ef0;
+          text-transform: uppercase; color: #22d3ee;
         }
 
         .gallery-wrap { cursor: pointer; }
@@ -320,7 +317,6 @@ const LandingPage = () => {
 
       {/* BG */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-        <div className="dot-grid" style={{ position: 'absolute', inset: 0 }} />
         <div style={{
           position: 'absolute', top: -200, left: '35%', width: 750, height: 450,
           background: 'radial-gradient(ellipse, rgba(37,99,235,0.07) 0%, transparent 70%)',
@@ -713,7 +709,6 @@ const LandingPage = () => {
             background: '#212121', padding: 'clamp(48px, 7vw, 80px) clamp(24px, 5vw, 56px)',
             overflow: 'hidden', textAlign: 'center',
           }}>
-            <div className="dot-grid" style={{ position: 'absolute', inset: 0, opacity: 0.7 }} />
             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 220, height: 1, background: 'linear-gradient(to right, transparent, #5b8ef0, transparent)' }} />
             <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 560, height: 280, background: 'radial-gradient(circle, rgba(37,99,235,0.09) 0%, transparent 70%)', filter: 'blur(40px)' }} />
             <div style={{ position: 'relative', zIndex: 2 }}>

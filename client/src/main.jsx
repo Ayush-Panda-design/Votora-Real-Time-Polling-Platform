@@ -5,11 +5,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import store from './store/store';
-import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SocketProvider } from './context/SocketContext';
 import './styles/globals.css';
-import CenteredToast from './components/ui/CenteredToast';
 
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -25,31 +23,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <AuthProviderWrapper {...authProviderProps}>
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ThemeProvider>
-            <AuthProvider>
-              <SocketProvider>
-                <App />
-                <Toaster
-                  position="top-center"
-                  containerStyle={{
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  toastOptions={{
-                    duration: Infinity, 
-                  }}
-                >
-                  {(t) => (
-                    <CenteredToast 
-                      t={t} 
-                      message={t.message} 
-                      type={t.type} 
-                    />
-                  )}
-                </Toaster>
-              </SocketProvider>
-            </AuthProvider>
+            <SocketProvider>
+              <App />
+              <Toaster
+                position="top-center"
+                containerStyle={{ top: 24, left: 0, right: 0 }}
+                gutter={16}
+                toastOptions={{
+                  style: {
+                    background: 'transparent',
+                    boxShadow: 'none',
+                    padding: 0,
+                    maxWidth: '100%',
+                  },
+                }}
+              />
+            </SocketProvider>
           </ThemeProvider>
         </BrowserRouter>
       </AuthProviderWrapper>
