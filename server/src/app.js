@@ -16,6 +16,9 @@ import { getClientOrigins, isAllowedClientOrigin, getAuthConfigStatus } from './
 
 const app = express();
 
+// Render/Vercel sit behind a reverse proxy — required for Secure cookies + correct client IP
+app.set('trust proxy', 1);
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false,

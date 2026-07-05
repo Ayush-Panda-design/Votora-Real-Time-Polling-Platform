@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, googleLogin } from '../authSlice';
+import { loginUser, googleLogin, fetchMe } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
@@ -24,16 +24,22 @@ const LoginPage = () => {
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const navigateAfterAuth = (user) => {
-    const target = redirect || (user.onboardingCompleted ? '/dashboard' : '/onboarding');
-    navigate(target);
+    const target = redirect || (user?.onboardingCompleted ? '/dashboard' : '/onboarding');
+    navigate(target, { replace: true });
+  };
+
+  const handleAuthSuccess = async (res, message) => {
+    notify.success(message);
+    await dispatch(fetchMe());
+    const user = res.payload.user;
+    navigateAfterAuth(user);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const res = await dispatch(loginUser(form));
     if (loginUser.fulfilled.match(res)) {
-      notify.success('Welcome back!');
-      navigateAfterAuth(res.payload.user);
+      await handleAuthSuccess(res, 'Welcome back!');
     } else {
       notify.error(res.payload);
     }
@@ -42,8 +48,7 @@ const LoginPage = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     const res = await dispatch(googleLogin(credentialResponse.credential));
     if (googleLogin.fulfilled.match(res)) {
-      notify.success('Logged in with Google!');
-      navigateAfterAuth(res.payload.user);
+      await handleAuthSuccess(res, 'Logged in with Google!');
     } else {
       notify.error(res.payload);
     }

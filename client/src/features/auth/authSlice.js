@@ -98,16 +98,23 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, rejected)
 
-      .addCase(fetchMe.pending, pending)
+      .addCase(fetchMe.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.loading = false;
         state.authChecked = true;
-        state.user = action.payload.user;
+        // Don't let a stale guest /auth/me response wipe a session set by login
+        if (action.payload.user) {
+          state.user = action.payload.user;
+        } else if (!state.user) {
+          state.user = null;
+        }
       })
       .addCase(fetchMe.rejected, (state) => {
         state.loading = false;
         state.authChecked = true;
-        state.user = null;
       })
 
       .addCase(logoutUser.fulfilled, (state) => {
