@@ -6,6 +6,7 @@ import {
   updatePoll,
   deletePoll,
   publishPoll,
+  startPollTimer,
   getPublicPoll,
   getPublicResults,
   duplicatePoll,
@@ -30,6 +31,7 @@ router.get('/:id', getPollById);
 router.patch('/:id', updatePollValidator, validate, updatePoll);
 router.delete('/:id', deletePoll);
 router.post('/:id/publish', publishPoll);
+router.post('/:id/start-timer', startPollTimer);
 router.post('/:id/duplicate', duplicatePoll);
 
 export default router;

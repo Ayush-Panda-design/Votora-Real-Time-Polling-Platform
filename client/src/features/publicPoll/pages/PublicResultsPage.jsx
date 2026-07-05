@@ -10,6 +10,7 @@ import Spinner from '../../../components/ui/Spinner';
 import Logo from '../../../components/ui/Logo';
 import { PremiumBackground } from '../../../components/ui/PremiumUI';
 import usePollSocket from '../../../hooks/usePollSocket';
+import { mergeAnalyticsStats } from '../../../utils/socketAnalytics';
 
 const PublicResultsPage = () => {
   const { pollCode } = useParams();
@@ -35,7 +36,9 @@ const PublicResultsPage = () => {
   // Live chart updates as new votes come in (published polls)
   usePollSocket(pollId, {
     onAnalyticsUpdate: (updated) => {
-      setData((prev) => (prev ? { ...prev, analytics: { ...prev.analytics, ...updated } } : prev));
+      setData((prev) => (prev
+        ? { ...prev, analytics: mergeAnalyticsStats(prev.analytics, updated) }
+        : prev));
     },
     onNewResponse: ({ totalResponses }) => {
       setData((prev) => (prev ? {
@@ -92,12 +95,13 @@ const PublicResultsPage = () => {
           <div className="space-y-6">
             {analytics?.questionStats?.map((qs, i) => {
               const chartData = Object.entries(qs.optionCounts || {}).map(([name, value]) => ({ name, value }));
+              const chartKey = chartData.map((d) => `${d.name}:${d.value}`).join('|');
               return (
                 <motion.div key={i} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="card">
                   <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Question {i + 1}</p>
                   <h3 className="text-lg font-semibold text-white mb-4">{qs.questionText}</h3>
                   <ResponsiveContainer width="100%" height={180}>
-                    <BarChart data={chartData} margin={{ left: -10 }}>
+                    <BarChart key={chartKey} data={chartData} margin={{ left: -10 }}>
                       <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 12 }} />
                       <YAxis tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
                       <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#fff' }} />

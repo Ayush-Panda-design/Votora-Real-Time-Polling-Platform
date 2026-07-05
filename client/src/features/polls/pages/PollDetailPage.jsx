@@ -27,7 +27,8 @@ const PollDetailPage = () => {
     onNewResponse: ({ totalResponses }) => dispatch(updatePollInList({ pollId: id, totalResponses })),
     onPollExpired: () => dispatch(updatePollInList({ pollId: id, status: 'expired' })),
     onPollPublished: () => dispatch(updatePollInList({ pollId: id, isPublished: true, status: 'published' })),
-  });
+    onTimerStarted: ({ endTime }) => dispatch(updatePollInList({ pollId: id, timerEndTime: endTime })),
+  }, { enabled: Boolean(id) });
 
   if (loading || (poll && poll._id !== id)) {
     return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;

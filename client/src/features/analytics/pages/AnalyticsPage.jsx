@@ -7,7 +7,9 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
 import api from '../../../services/api';
-import usePollSocket, { emitStartTimer } from '../../../hooks/usePollSocket';
+import usePollSocket from '../../../hooks/usePollSocket';
+import { startPollTimer } from '../../../services/pollTimer';
+import { mergeAnalyticsStats } from '../../../utils/socketAnalytics';
 import { CHART_COLORS, buildPollUrl, copyToClipboard } from '../../../utils/helpers';
 import Spinner from '../../../components/ui/Spinner';
 import Modal from '../../../components/ui/Modal';
@@ -120,19 +122,37 @@ const AnalyticsPage = () => {
 
   usePollSocket(id, {
     onAnalyticsUpdate: (updated) => {
-      setData((prev) => (prev ? { ...prev, stats: updated } : prev));
+      setData((prev) => (prev ? { ...prev, stats: mergeAnalyticsStats(prev.stats, updated) } : prev));
     },
     onNewResponse: ({ totalResponses }) => {
-      setData((prev) => (prev ? { ...prev, stats: { ...prev.stats, totalResponses } } : prev));
+      setData((prev) => (prev
+        ? { ...prev, stats: { ...prev.stats, totalResponses } }
+        : prev));
       refreshResponses();
     },
     onParticipantCount: ({ count }) => setParticipants(count),
     onTimerStarted: ({ endTime }) => {
       const end = new Date(endTime);
-      if (end > new Date()) setActiveTimerEnd(end);
+      if (end > new Date()) {
+        setActiveTimerEnd(end);
+        setData((prev) => (prev?.poll
+          ? { ...prev, poll: { ...prev.poll, timerEndTime: endTime } }
+          : prev));
+      }
+    },
+    onPollStatsUpdate: ({ timerEndTime, totalResponses }) => {
+      if (timerEndTime) {
+        const end = new Date(timerEndTime);
+        if (end > new Date()) setActiveTimerEnd(end);
+      }
+      if (totalResponses !== undefined) {
+        setData((prev) => (prev
+          ? { ...prev, stats: { ...prev.stats, totalResponses } }
+          : prev));
+      }
     },
     onPollExpired: () => notify.warning('Poll has expired', { icon: '⏰' }),
-  }, { analytics: true });
+  }, { analytics: true, enabled: Boolean(id) && !loading });
 
   useEffect(() => {
     if (!activeTimerEnd) return;
@@ -149,9 +169,23 @@ const AnalyticsPage = () => {
     return () => clearInterval(interval);
   }, [activeTimerEnd]);
 
-  const startTimer = () => {
-    emitStartTimer(id);
-    notify.success('Timer started!');
+  const handleStartTimer = async () => {
+    try {
+      const result = await startPollTimer(id);
+      const endTime = result?.timerEndTime;
+      if (endTime) {
+        const end = new Date(endTime);
+        if (end > new Date()) {
+          setActiveTimerEnd(end);
+          setData((prev) => (prev?.poll
+            ? { ...prev, poll: { ...prev.poll, timerEndTime: endTime } }
+            : prev));
+        }
+      }
+      notify.success('Timer started — participants will see the poll live');
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'Failed to start timer');
+    }
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>;
@@ -193,7 +227,7 @@ const AnalyticsPage = () => {
             </div>
           )}
           {!timeLeft && poll?.timeLimitSystem === 'timer' && (
-            <button onClick={startTimer} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition font-medium text-[13px] z-50">
+            <button onClick={handleStartTimer} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition font-medium text-[13px] z-50">
               <FiClock /> Start Timer
             </button>
           )}
@@ -239,7 +273,7 @@ const AnalyticsPage = () => {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 mb-8">
           <h2 className="text-lg font-semibold text-[#f5f5f5] mb-4">Response activity over time</h2>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={stats.responseTimeline} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <LineChart key={stats.responseTimeline?.length ?? 0} data={stats.responseTimeline} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" />
               <XAxis dataKey="time" tick={{ fill: '#6b6b6b', fontSize: 11 }} tickFormatter={(v) => v.slice(5, 16)} />
               <YAxis tick={{ fill: '#6b6b6b', fontSize: 12 }} allowDecimals={false} />
@@ -262,6 +296,7 @@ const AnalyticsPage = () => {
       <div className="space-y-6">
         {stats?.questionStats?.map((qs, i) => {
           const chartData = Object.entries(qs.optionCounts || {}).map(([name, value]) => ({ name, value }));
+          const chartKey = chartData.map((d) => `${d.name}:${d.value}`).join('|');
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6">
               <div className="flex items-start justify-between mb-6 flex-wrap gap-2">
@@ -280,7 +315,7 @@ const AnalyticsPage = () => {
                 <div>
                   <p className="text-xs text-[#6b6b6b] uppercase tracking-wide mb-3">Vote Count</p>
                   <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <BarChart key={chartKey} data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="name" tick={{ fill: '#6b6b6b', fontSize: 12 }} />
                       <YAxis tick={{ fill: '#6b6b6b', fontSize: 12 }} allowDecimals={false} />
                       <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, color: '#fff' }} />
@@ -295,7 +330,7 @@ const AnalyticsPage = () => {
                 <div>
                   <p className="text-xs text-[#6b6b6b] uppercase tracking-wide mb-3">Distribution</p>
                   <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
+                    <PieChart key={chartKey}>
                       <Pie data={chartData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                         {chartData.map((_, ci) => <Cell key={ci} fill={CHART_COLORS[ci % CHART_COLORS.length]} />)}
                       </Pie>

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiX, FiClock } from 'react-icons/fi';
 import api from '../../../services/api';
 import usePollSocket from '../../../hooks/usePollSocket';
+import { startPollTimer } from '../../../services/pollTimer';
+import { mergeAnalyticsStats } from '../../../utils/socketAnalytics';
 import { CHART_COLORS, buildPollUrl } from '../../../utils/helpers';
 import notify from '../../../utils/notify';
 import Spinner from '../../../components/ui/Spinner';
@@ -20,6 +22,8 @@ const PresentationPage = () => {
   const [current, setCurrent]     = useState(0);
   const [participants, setParticipants] = useState(0);
   const [loading, setLoading]     = useState(true);
+  const [activeTimerEnd, setActiveTimerEnd] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -30,6 +34,11 @@ const PresentationPage = () => {
         ]);
         setPoll(pollRes.data.poll);
         setAnalytics(analyticsRes.data.stats);
+        const p = pollRes.data.poll;
+        if (p?.timeLimitSystem === 'timer' && p.timerEndTime) {
+          const end = new Date(p.timerEndTime);
+          if (end > new Date()) setActiveTimerEnd(end);
+        }
       } catch {
         navigate('/dashboard');
       } finally {
@@ -40,22 +49,61 @@ const PresentationPage = () => {
   }, [id, navigate]);
 
   usePollSocket(id, {
-    onAnalyticsUpdate: (updated) => setAnalytics(updated),
+    onAnalyticsUpdate: (updated) => {
+      setAnalytics((prev) => mergeAnalyticsStats(prev, updated));
+    },
+    onNewResponse: ({ totalResponses }) => {
+      setAnalytics((prev) => (prev ? { ...prev, totalResponses } : prev));
+    },
     onParticipantCount: ({ count }) => setParticipants(count),
     onPollExpired: () => notify.warning('Poll expired', { icon: '⏰' }),
     onTimerStarted: ({ endTime }) => {
       const end = new Date(endTime);
       if (end > new Date()) {
+        setActiveTimerEnd(end);
         setPoll((p) => (p ? { ...p, timerEndTime: endTime } : p));
       }
     },
-  }, { enabled: Boolean(id) && !loading });
+  }, { enabled: Boolean(id) && !loading, analytics: true });
+
+  useEffect(() => {
+    if (!activeTimerEnd) return;
+    const interval = setInterval(() => {
+      const remaining = Math.floor((activeTimerEnd - new Date()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setTimeLeft(null);
+        setActiveTimerEnd(null);
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activeTimerEnd]);
+
+  const handleStartTimer = async () => {
+    try {
+      const result = await startPollTimer(id);
+      const endTime = result?.timerEndTime;
+      if (endTime) {
+        const end = new Date(endTime);
+        if (end > new Date()) {
+          setActiveTimerEnd(end);
+          setPoll((p) => (p ? { ...p, timerEndTime: endTime } : p));
+        }
+      }
+      notify.success('Timer started');
+    } catch (err) {
+      notify.error(err.response?.data?.message || 'Failed to start timer');
+    }
+  };
 
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Spinner size="lg" /></div>;
 
   const questions = poll?.questions || [];
   const qs        = analytics?.questionStats?.[current];
   const chartData = qs ? Object.entries(qs.optionCounts || {}).map(([name, value]) => ({ name, value })) : [];
+  const chartKey = chartData.map((d) => `${d.name}:${d.value}`).join('|');
 
   return (
     <div className="min-h-screen bg-[#121212] flex flex-col overflow-hidden relative">
@@ -68,6 +116,20 @@ const PresentationPage = () => {
           <span className="text-[#6b6b6b] text-sm ml-2 border-l border-white/10 pl-4 hidden md:inline">Presentation Mode</span>
         </div>
         <div className="flex items-center gap-6">
+          {timeLeft !== null && (
+            <span className="text-red-400 font-mono text-sm font-bold">
+              ⏱ {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </span>
+          )}
+          {!timeLeft && poll?.timeLimitSystem === 'timer' && (
+            <button
+              type="button"
+              onClick={handleStartTimer}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm hover:bg-indigo-500/20 transition"
+            >
+              <FiClock size={14} /> Start Timer
+            </button>
+          )}
           <span className="flex items-center gap-2 text-emerald-400 text-sm">
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
             {participants} live
@@ -104,7 +166,7 @@ const PresentationPage = () => {
             {chartData.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData} margin={{ left: -10 }}>
+                  <BarChart key={chartKey} data={chartData} margin={{ left: -10 }}>
                     <XAxis dataKey="name" tick={{ fill: '#6b6b6b', fontSize: 14 }} />
                     <YAxis tick={{ fill: '#6b6b6b', fontSize: 14 }} allowDecimals={false} />
                     <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, color: '#fff', fontSize: 14 }} />

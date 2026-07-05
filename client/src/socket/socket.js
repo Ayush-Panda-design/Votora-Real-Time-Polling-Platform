@@ -10,7 +10,11 @@ export const getSocket = () => {
     socket = io(SOCKET_URL, {
       withCredentials: true,
       autoConnect: false,
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 15,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       auth: (cb) => {
         const token = getAccessToken();
         cb(token ? { token } : {});
@@ -26,9 +30,19 @@ export const connectSocket = () => {
   return s;
 };
 
+/** Reconnect with a fresh auth token after login/logout */
+export const reconnectSocket = () => {
+  const s = getSocket();
+  if (s.connected) {
+    s.disconnect();
+  }
+  s.connect();
+  return s;
+};
+
 export const disconnectSocket = () => {
   if (socket?.connected) {
     socket.disconnect();
-    socket = null;
   }
+  socket = null;
 };

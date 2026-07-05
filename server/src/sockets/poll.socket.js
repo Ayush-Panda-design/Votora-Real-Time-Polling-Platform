@@ -22,17 +22,12 @@ export const registerPollSocketHandlers = (io, socket) => {
     if (!socket.userId || !pollId) return;
 
     try {
-      const Poll = (await import('../models/Poll.js')).default;
+      const { startPollTimerService } = await import('../services/poll.service.js');
       const { emitTimerStarted } = await import('../services/socket.service.js');
-      const poll = await Poll.findById(pollId);
-      if (!poll || poll.createdBy.toString() !== socket.userId) return;
-      if (poll.timeLimitSystem === 'timer' && poll.timerDuration) {
-        poll.timerEndTime = new Date(Date.now() + poll.timerDuration * 60 * 1000);
-        await poll.save();
-        emitTimerStarted(pollId, poll.timerEndTime, poll.createdBy?.toString());
-      }
+      const poll = await startPollTimerService(pollId, socket.userId);
+      emitTimerStarted(pollId, poll.timerEndTime, poll.createdBy?.toString());
     } catch (err) {
-      console.error('Error starting timer:', err);
+      console.error('Error starting timer:', err.message);
     }
   });
 };
