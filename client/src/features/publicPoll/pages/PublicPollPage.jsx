@@ -322,7 +322,7 @@ const PublicPollPage = () => {
             </h2>
             <p className="text-gray-400 mb-8">
               {isCheatSubmitted
-                ? 'You were disqualified from continuing because you left the page.'
+                ? 'Your quiz was auto-submitted when you left the page.'
                 : 'You\'ve successfully submitted your responses.'}
             </p>
 
