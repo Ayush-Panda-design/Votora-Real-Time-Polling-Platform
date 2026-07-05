@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../../services/api';
-import Input, { PasswordInput } from '../../../components/ui/Input';
+import { PasswordInput } from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import notify from '../../../utils/notify';
 

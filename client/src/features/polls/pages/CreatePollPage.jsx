@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus, FiTrash2, FiArrowLeft, FiArrowRight, FiCheckCircle,
-  FiShield, FiClock, FiZap, FiLock, FiKey, FiGlobe,
+  FiShield, FiZap, FiLock, FiKey, FiGlobe,
   FiShuffle, FiHash, FiEye, FiChevronUp, FiChevronDown,
 } from 'react-icons/fi';
 import { HiOutlineSparkles } from 'react-icons/hi2';
@@ -152,10 +152,11 @@ const CreatePollPage = () => {
       maxResponses: form.maxResponses ? Number(form.maxResponses) : null,
       expiresAt: form.timeLimitSystem === 'expiry' && form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
       timerDuration: form.timeLimitSystem === 'timer' && form.timerDuration ? Number(form.timerDuration) : null,
-      questions: form.questions.map(({ id: _id, ...q }) => ({
-        ...q,
-        options: q.options.filter(Boolean),
-      })),
+      questions: form.questions.map((q) => {
+        const { id, ...question } = q;
+        void id;
+        return { ...question, options: question.options.filter(Boolean) };
+      }),
     };
     delete payload.allowedDomainsString;
 

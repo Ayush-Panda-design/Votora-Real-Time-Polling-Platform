@@ -1,7 +1,7 @@
 import {
-  FiSearch, FiShare2, FiCopy, FiEye, FiPlusCircle, FiClock,
+  FiSearch, FiShare2, FiPlusCircle, FiClock,
   FiShield, FiBarChart2, FiMonitor, FiUser, FiLock, FiZap,
-  FiChevronUp, FiChevronDown, FiAward, FiGrid, FiEdit, FiTarget,
+  FiAward, FiEdit, FiTarget,
   FiDownload, FiRefreshCw, FiCheckCircle, FiLayers, FiTrendingUp,
 } from 'react-icons/fi';
 

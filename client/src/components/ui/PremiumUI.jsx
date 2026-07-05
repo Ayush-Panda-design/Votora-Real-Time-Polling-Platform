@@ -230,6 +230,7 @@ export const PremiumToggle = ({ label, desc, value, onClick, icon: Icon, premium
   </button>
 );
 
+// eslint-disable-next-line react-refresh/only-export-components -- shared with CreatePollPage
 export const calcSecurityScore = (form) => {
   let score = 10;
   const domains = Array.isArray(form.allowedDomains)

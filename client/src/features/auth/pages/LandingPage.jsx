@@ -48,16 +48,17 @@ const gallery = [
   },
 ];
 
+const HERO_WORDS = ['Feels Instant', 'Looks Premium', 'Built for Realtime', 'Made for Communities'];
+
 const LandingPage = () => {
   const navigate = useNavigate();
 
-  const words = ['Feels Instant', 'Looks Premium', 'Built for Realtime', 'Made for Communities'];
   const [text, setText] = useState('');
   const [wordIndex, setWordIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const currentWord = words[wordIndex];
+    const currentWord = HERO_WORDS[wordIndex];
     const timeout = setTimeout(() => {
       if (!isDeleting) {
         setText(currentWord.substring(0, text.length + 1));
@@ -66,7 +67,7 @@ const LandingPage = () => {
         setText(currentWord.substring(0, text.length - 1));
         if (text === '') {
           setIsDeleting(false);
-          setWordIndex((prev) => (prev + 1) % words.length);
+          setWordIndex((prev) => (prev + 1) % HERO_WORDS.length);
         }
       }
     }, isDeleting ? 40 : 85);

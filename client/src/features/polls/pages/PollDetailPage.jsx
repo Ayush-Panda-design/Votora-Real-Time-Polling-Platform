@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { fetchPollById, publishPoll, deletePoll, updatePollInList, clearCurrentPoll } from '../pollSlice';

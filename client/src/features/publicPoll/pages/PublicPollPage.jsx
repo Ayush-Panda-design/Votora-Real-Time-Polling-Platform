@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -29,6 +29,40 @@ const PublicPollPage = () => {
   const [locked, setLocked] = useState(false);
   const [accessPin, setAccessPin] = useState('');
   const [unlocking, setUnlocking] = useState(false);
+  const [activeTimerEnd, setActiveTimerEnd] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
+
+  const generatePayload = useCallback(() => {
+    if (!poll?.questions) return [];
+    return poll.questions.map((_, qIdx) => ({
+      questionIndex: qIdx,
+      selectedOption: answers[qIdx] || null,
+    }));
+  }, [poll, answers]);
+
+  const handleAutoSubmit = useCallback(async (isCheat = false) => {
+    if (autoSubmitTriggered || !poll?._id) return;
+    setAutoSubmitTriggered(true);
+
+    const payload = generatePayload();
+    try {
+      setSubmitting(true);
+      const res = await api.post(`/responses/${poll._id}`, { answers: payload, isAutoSubmitted: true });
+      if (res.data.quizResults) setQuizResults(res.data.quizResults);
+      setSubmitted(true);
+
+      if (isCheat) {
+        notify.error('Quiz auto-submitted because you left the page!', { duration: 6000 });
+      } else {
+        notify.error("Time's up! Your response was auto-submitted.", { duration: 6000 });
+      }
+    } catch (err) {
+      console.error('Auto-submit failed', err);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [autoSubmitTriggered, poll, generatePayload]);
 
   useEffect(() => {
     const fetchPoll = async () => {
@@ -64,7 +98,7 @@ const PublicPollPage = () => {
       }
     };
     fetchPoll();
-  }, [pollCode]);
+  }, [pollCode, navigate]);
 
   const handleUnlock = async (e) => {
     e.preventDefault();
@@ -90,11 +124,6 @@ const PublicPollPage = () => {
     }
   };
 
-  // Timer States
-  const [activeTimerEnd, setActiveTimerEnd] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
-
   usePollSocket(poll?._id, {
     onParticipantCount: ({ count }) => setParticipants(count),
     onPollExpired: () => setExpired(true),
@@ -119,7 +148,7 @@ const PublicPollPage = () => {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [activeTimerEnd]);
+  }, [activeTimerEnd, handleAutoSubmit]);
 
 
   useEffect(() => {
@@ -145,40 +174,10 @@ const PublicPollPage = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
     };
-  }, [poll, submitted, submitting, answers]);
+  }, [poll, submitted, submitting, handleAutoSubmit]);
 
   const handleSelect = (qIdx, option) =>
     setAnswers((a) => ({ ...a, [qIdx]: option }));
-
-  const generatePayload = () => {
-    return poll.questions.map((_, qIdx) => ({
-      questionIndex: qIdx,
-      selectedOption: answers[qIdx] || null,
-    }));
-  };
-
-  const handleAutoSubmit = async (isCheat = false) => {
-    if (autoSubmitTriggered) return;
-    setAutoSubmitTriggered(true);
-
-    const payload = generatePayload();
-    try {
-      setSubmitting(true);
-      const res = await api.post(`/responses/${poll._id}`, { answers: payload, isAutoSubmitted: true });
-      if (res.data.quizResults) setQuizResults(res.data.quizResults);
-      setSubmitted(true);
-      
-      if (isCheat) {
-        notify.error('Quiz auto-submitted because you left the page!', { duration: 6000 });
-      } else {
-        notify.error("Time's up! Your response was auto-submitted.", { duration: 6000 });
-      }
-    } catch (err) {
-      console.error('Auto-submit failed', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleSubmit = async () => {
     const missing = poll.questions
