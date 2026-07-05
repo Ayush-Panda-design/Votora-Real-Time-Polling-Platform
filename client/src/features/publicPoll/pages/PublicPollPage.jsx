@@ -130,7 +130,11 @@ const PublicPollPage = () => {
     onPollPublished: () => navigate(`/poll/${pollCode}/results`),
     onTimerStarted: ({ endTime }) => {
       const end = new Date(endTime);
-      if (end > new Date()) setActiveTimerEnd(end);
+      if (end > new Date()) {
+        setActiveTimerEnd(end);
+        setPoll((p) => (p ? { ...p, timerEndTime: endTime } : p));
+        notify.success('The session has started!');
+      }
     },
   }, { enabled: Boolean(poll?._id) && !locked });
 

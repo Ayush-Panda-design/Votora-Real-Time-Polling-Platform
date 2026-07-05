@@ -13,7 +13,9 @@ export const useUserSocket = (handlers = {}, enabled = true) => {
     if (!enabled) return;
 
     const socket = connectSocket();
-    socket.emit(SOCKET_EVENTS.JOIN_USER);
+
+    const joinUserRoom = () => socket.emit(SOCKET_EVENTS.JOIN_USER);
+    const leaveUserRoom = () => socket.emit(SOCKET_EVENTS.LEAVE_USER);
 
     const onStats = (data) => handlersRef.current.onPollStatsUpdate?.(data);
     const onList = (data) => handlersRef.current.onPollListChanged?.(data);
@@ -21,8 +23,13 @@ export const useUserSocket = (handlers = {}, enabled = true) => {
     socket.on(SOCKET_EVENTS.POLL_STATS_UPDATE, onStats);
     socket.on(SOCKET_EVENTS.POLL_LIST_CHANGED, onList);
 
+    const onConnect = () => joinUserRoom();
+    if (socket.connected) joinUserRoom();
+    socket.on('connect', onConnect);
+
     return () => {
-      socket.emit(SOCKET_EVENTS.LEAVE_USER);
+      socket.off('connect', onConnect);
+      leaveUserRoom();
       socket.off(SOCKET_EVENTS.POLL_STATS_UPDATE, onStats);
       socket.off(SOCKET_EVENTS.POLL_LIST_CHANGED, onList);
     };

@@ -14,8 +14,16 @@ export const usePollSocket = (pollId, handlers = {}, { enabled = true, analytics
     if (!pollId || !enabled) return;
 
     const socket = connectSocket();
-    socket.emit(SOCKET_EVENTS.JOIN_POLL, pollId);
-    if (analytics) socket.emit(SOCKET_EVENTS.SUBSCRIBE_ANALYTICS, pollId);
+
+    const joinRooms = () => {
+      socket.emit(SOCKET_EVENTS.JOIN_POLL, pollId);
+      if (analytics) socket.emit(SOCKET_EVENTS.SUBSCRIBE_ANALYTICS, pollId);
+    };
+
+    const leaveRooms = () => {
+      socket.emit(SOCKET_EVENTS.LEAVE_POLL, pollId);
+      if (analytics) socket.emit(SOCKET_EVENTS.UNSUBSCRIBE_ANALYTICS, pollId);
+    };
 
     const listen = (event, key) => {
       const fn = (...args) => handlersRef.current[key]?.(...args);
@@ -33,19 +41,16 @@ export const usePollSocket = (pollId, handlers = {}, { enabled = true, analytics
       listen(SOCKET_EVENTS.TIMER_STARTED, 'onTimerStarted'),
     ];
 
+    const onConnect = () => joinRooms();
+    if (socket.connected) joinRooms();
+    socket.on('connect', onConnect);
+
     return () => {
-      socket.emit(SOCKET_EVENTS.LEAVE_POLL, pollId);
-      if (analytics) socket.emit(SOCKET_EVENTS.UNSUBSCRIBE_ANALYTICS, pollId);
+      socket.off('connect', onConnect);
+      leaveRooms();
       offs.forEach((off) => off());
     };
   }, [pollId, enabled, analytics]);
-};
-
-export const emitStartTimer = (pollId) => {
-  const socket = getSocket();
-  if (socket?.connected) {
-    socket.emit(SOCKET_EVENTS.START_TIMER, { pollId });
-  }
 };
 
 export default usePollSocket;

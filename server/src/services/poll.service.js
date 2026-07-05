@@ -120,6 +120,21 @@ export const publishPollService = async (pollId, userId) => {
   return poll;
 };
 
+export const startPollTimerService = async (pollId, userId) => {
+  const poll = await Poll.findById(pollId);
+  if (!poll) throw new ApiError(404, 'Poll not found');
+  if (poll.createdBy.toString() !== userId.toString())
+    throw new ApiError(403, 'Not authorised to start this poll timer');
+  if (poll.timeLimitSystem !== 'timer')
+    throw new ApiError(400, 'This poll does not use a manual live timer');
+  if (!poll.timerDuration)
+    throw new ApiError(400, 'Timer duration is not configured');
+
+  poll.timerEndTime = new Date(Date.now() + poll.timerDuration * 60 * 1000);
+  await poll.save();
+  return poll;
+};
+
 export const duplicatePollService = async (pollId, userId) => {
   const poll = await Poll.findById(pollId);
   if (!poll) throw new ApiError(404, 'Poll not found');

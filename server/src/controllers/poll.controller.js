@@ -6,12 +6,13 @@ import {
   updatePollService,
   deletePollService,
   publishPollService,
+  startPollTimerService,
   getPublicPollService,
   getPublicResultsService,
   duplicatePollService,
   unlockPublicPollService,
 } from '../services/poll.service.js';
-import { emitPollPublished, emitPollListChanged } from '../services/socket.service.js';
+import { emitPollPublished, emitPollListChanged, emitTimerStarted } from '../services/socket.service.js';
 
 export const createPoll = asyncHandler(async (req, res) => {
   const poll = await createPollService(req.body, req.user._id);
@@ -44,6 +45,16 @@ export const publishPoll = asyncHandler(async (req, res) => {
   const poll = await publishPollService(req.params.id, req.user._id);
   emitPollPublished(poll._id.toString(), req.user._id.toString(), poll);
   res.status(200).json({ success: true, poll });
+});
+
+export const startPollTimer = asyncHandler(async (req, res) => {
+  const poll = await startPollTimerService(req.params.id, req.user._id);
+  emitTimerStarted(poll._id.toString(), poll.timerEndTime, req.user._id.toString());
+  res.status(200).json({
+    success: true,
+    poll,
+    timerEndTime: poll.timerEndTime,
+  });
 });
 
 export const duplicatePoll = asyncHandler(async (req, res) => {

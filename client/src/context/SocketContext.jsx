@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useDispatch } from 'react-redux';
-import { connectSocket, getSocket } from '../socket/socket';
+import { reconnectSocket, disconnectSocket, getSocket } from '../socket/socket';
 import { useUserSocket } from '../hooks/useUserSocket';
 import { updatePollInList, addPollToList, removePollFromList } from '../features/polls/pollSlice';
 
@@ -11,12 +11,19 @@ export const SocketProvider = ({ children }) => {
   const user = useSelector((s) => s.auth.user);
   const dispatch = useDispatch();
   const socketRef = useRef(null);
+  const prevUserIdRef = useRef(null);
 
   useEffect(() => {
     if (user) {
-      socketRef.current = connectSocket();
+      reconnectSocket();
+      socketRef.current = getSocket();
+    } else if (prevUserIdRef.current) {
+      // Logged out — tear down authenticated socket
+      disconnectSocket();
+      socketRef.current = null;
     }
-  }, [user]);
+    prevUserIdRef.current = user?._id ?? null;
+  }, [user?._id]);
 
   useUserSocket({
     onPollStatsUpdate: ({ pollId, ...stats }) => {
