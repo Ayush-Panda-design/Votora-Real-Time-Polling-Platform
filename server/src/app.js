@@ -12,16 +12,25 @@ import analyticsRoutes from './routes/analytics.routes.js';
 import errorMiddleware from './middleware/error.middleware.js';
 import { apiLimiter, authLimiter } from './middleware/rateLimit.middleware.js';
 import { csrfProtection } from './middleware/csrf.middleware.js';
+import { isAllowedClientOrigin } from './config/clientOrigins.js';
 
 const app = express();
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false,
+  // Required for @react-oauth/google (GIS postMessage from accounts.google.com)
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
 }));
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin(origin, callback) {
+    if (isAllowedClientOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
   credentials: true,
 }));
 

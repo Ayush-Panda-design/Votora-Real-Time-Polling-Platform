@@ -4,13 +4,14 @@ import { Server } from 'socket.io';
 import { registerPollSocketHandlers } from '../sockets/poll.socket.js';
 import { registerAnalyticsSocketHandlers } from '../sockets/analytics.socket.js';
 import { registerUserSocketHandlers } from '../sockets/user.socket.js';
+import { getClientOrigins } from './clientOrigins.js';
 
 let io;
 
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: getClientOrigins(),
       methods: ['GET', 'POST'],
       credentials: true,
     },
