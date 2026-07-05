@@ -3,8 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, googleLogin, fetchMe } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
-import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
+import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
 import { resolvePostAuthPath } from '../../../utils/postAuthNavigation';
 import Input, { PasswordInput } from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
@@ -63,16 +63,11 @@ const LoginPage = () => {
 
       {isGoogleEnabled && (
         <>
-          <div className="flex justify-center mb-5">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => notify.error('Google login failed')}
-              theme="filled_black"
-              shape="pill"
-              text="signin_with"
-              width="340"
-            />
-          </div>
+          <GoogleSignInButton
+            onSuccess={handleGoogleSuccess}
+            onError={() => notify.error('Google login failed')}
+            text="signin_with"
+          />
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/[0.08]" />
             <span className="text-[11px] text-votora-muted uppercase tracking-wider">or email</span>

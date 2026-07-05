@@ -2,6 +2,17 @@
   "installCommand": "npm install --prefix client",
   "buildCommand": "npm run build --prefix client",
   "outputDirectory": "client/dist",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
