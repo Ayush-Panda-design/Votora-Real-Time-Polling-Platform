@@ -141,7 +141,6 @@ export const duplicatePollService = async (pollId, userId) => {
   if (poll.createdBy.toString() !== userId.toString())
     throw new ApiError(403, 'Not authorised');
 
-  // Generate new code
   let pollCode;
   let exists = true;
   while (exists) {
@@ -149,7 +148,6 @@ export const duplicatePollService = async (pollId, userId) => {
     exists = await Poll.findOne({ pollCode });
   }
 
-  // Create new poll as draft
   const newPoll = await Poll.create({
     title: `${poll.title} (Copy)`,
     description: poll.description,
@@ -160,9 +158,8 @@ export const duplicatePollService = async (pollId, userId) => {
     pollCode,
     status: POLL_STATUS.ACTIVE,
     isPublished: false,
-    totalResponses: 0
+    totalResponses: 0,
   });
-
 
   await Analytics.findOneAndUpdate(
     { pollId: newPoll._id },
@@ -190,6 +187,31 @@ export const getPublicPollService = async (pollCode) => {
   }
 
   return sanitizePollForPublic(poll, { includeQuestions: true });
+};
+
+/** Lightweight session check for waiting-room clients (no question shuffle) */
+export const getPublicPollSessionService = async (pollCode) => {
+  const poll = await Poll.findOne({ pollCode: pollCode.toUpperCase() })
+    .select('_id timerEndTime timeLimitSystem expiresAt isPublished status');
+
+  if (!poll) throw new ApiError(404, 'Poll not found');
+
+  if (poll.isExpired() && !poll.isPublished) {
+    throw new ApiError(410, 'This poll has expired');
+  }
+
+  const timerEndTime = poll.timerEndTime ?? null;
+  const timerActive = timerEndTime && new Date(timerEndTime) > new Date();
+
+  return {
+    pollId: poll._id.toString(),
+    timerEndTime,
+    timerActive,
+    timeLimitSystem: poll.timeLimitSystem,
+    expiresAt: poll.expiresAt ?? null,
+    isPublished: poll.isPublished,
+    status: poll.status,
+  };
 };
 
 export const unlockPublicPollService = async (pollCode, accessCode) => {

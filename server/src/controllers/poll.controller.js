@@ -8,6 +8,7 @@ import {
   publishPollService,
   startPollTimerService,
   getPublicPollService,
+  getPublicPollSessionService,
   getPublicResultsService,
   duplicatePollService,
   unlockPublicPollService,
@@ -66,6 +67,11 @@ export const duplicatePoll = asyncHandler(async (req, res) => {
 export const getPublicPoll = asyncHandler(async (req, res) => {
   const poll = await getPublicPollService(req.params.pollCode);
   res.status(200).json({ success: true, poll });
+});
+
+export const getPublicPollSession = asyncHandler(async (req, res) => {
+  const session = await getPublicPollSessionService(req.params.pollCode);
+  res.status(200).json({ success: true, session });
 });
 
 export const getPublicResults = asyncHandler(async (req, res) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -32,6 +32,20 @@ const PublicPollPage = () => {
   const [activeTimerEnd, setActiveTimerEnd] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
+  const sessionStartedRef = useRef(false);
+
+  const pollRoomId = poll?._id ? String(poll._id) : null;
+
+  const applySessionStart = useCallback((endTime, { notifyUser = true } = {}) => {
+    if (!endTime || sessionStartedRef.current) return;
+    const end = new Date(endTime);
+    if (Number.isNaN(end.getTime()) || end <= new Date()) return;
+
+    sessionStartedRef.current = true;
+    setActiveTimerEnd(end);
+    setPoll((p) => (p ? { ...p, timerEndTime: end.toISOString() } : p));
+    if (notifyUser) notify.success('The session has started!');
+  }, []);
 
   const generatePayload = useCallback(() => {
     if (!poll?.questions) return [];
@@ -82,7 +96,10 @@ const PublicPollPage = () => {
         setLocked(false);
         if (p.timeLimitSystem === 'timer' && p.timerEndTime) {
           const end = new Date(p.timerEndTime);
-          if (end > new Date()) setActiveTimerEnd(end);
+          if (end > new Date()) {
+            sessionStartedRef.current = true;
+            setActiveTimerEnd(end);
+          }
         } else if (p.timeLimitSystem === 'expiry' && p.expiresAt) {
           const end = new Date(p.expiresAt);
           if (end > new Date()) setActiveTimerEnd(end);
@@ -124,19 +141,34 @@ const PublicPollPage = () => {
     }
   };
 
-  usePollSocket(poll?._id, {
+  usePollSocket(pollRoomId, {
     onParticipantCount: ({ count }) => setParticipants(count),
     onPollExpired: () => setExpired(true),
     onPollPublished: () => navigate(`/poll/${pollCode}/results`),
-    onTimerStarted: ({ endTime }) => {
-      const end = new Date(endTime);
-      if (end > new Date()) {
-        setActiveTimerEnd(end);
-        setPoll((p) => (p ? { ...p, timerEndTime: endTime } : p));
-        notify.success('The session has started!');
+    onTimerStarted: ({ endTime }) => applySessionStart(endTime),
+    onPollStatsUpdate: ({ timerEndTime }) => applySessionStart(timerEndTime, { notifyUser: false }),
+  }, { enabled: Boolean(pollRoomId) && !locked });
+
+  // Fallback while waiting: poll session status every 2s (works even if socket drops)
+  useEffect(() => {
+    if (locked || !poll || poll.timeLimitSystem !== 'timer' || activeTimerEnd) return;
+
+    const checkSession = async () => {
+      try {
+        const res = await api.get(`/polls/public/${pollCode}/session`);
+        const { timerEndTime, timerActive } = res.data.session ?? {};
+        if (timerActive && timerEndTime) {
+          applySessionStart(timerEndTime);
+        }
+      } catch {
+        /* ignore transient errors */
       }
-    },
-  }, { enabled: Boolean(poll?._id) && !locked });
+    };
+
+    checkSession();
+    const interval = setInterval(checkSession, 2000);
+    return () => clearInterval(interval);
+  }, [locked, poll, pollCode, activeTimerEnd, applySessionStart]);
 
   useEffect(() => {
     if (!activeTimerEnd) return;

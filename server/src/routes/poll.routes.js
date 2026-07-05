@@ -8,6 +8,7 @@ import {
   publishPoll,
   startPollTimer,
   getPublicPoll,
+  getPublicPollSession,
   getPublicResults,
   duplicatePoll,
   unlockPublicPoll,
@@ -20,6 +21,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/public/:pollCode', getPublicPoll);
+router.get('/public/:pollCode/session', getPublicPollSession);
 router.post('/public/:pollCode/unlock', unlockPublicPoll);
 router.get('/public/results/:pollCode', getPublicResults);
 
