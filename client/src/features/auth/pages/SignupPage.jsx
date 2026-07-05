@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { signupUser, googleLogin, fetchMe } from '../authSlice';
+import { signupUser, googleLogin } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
@@ -49,16 +49,11 @@ const SignupPage = () => {
     }
   };
 
-  const handleAuthSuccess = async (res, message) => {
-    notify.success(message);
-    await dispatch(fetchMe());
-    navigate(resolvePostAuthPath(res.payload.user, redirect), { replace: true });
-  };
-
   const handleGoogleSuccess = async (credentialResponse) => {
     const res = await dispatch(googleLogin(credentialResponse.credential));
     if (googleLogin.fulfilled.match(res)) {
-      await handleAuthSuccess(res, 'Signed in with Google!');
+      notify.success('Signed in with Google!');
+      navigate(resolvePostAuthPath(res.payload.user, redirect), { replace: true });
     } else {
       notify.error(res.payload);
     }

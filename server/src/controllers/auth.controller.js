@@ -17,7 +17,7 @@ const sendTokenResponse = (res, { token, refreshToken, user }, statusCode = 200)
   if (refreshToken) {
     res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
   }
-  res.status(statusCode).json({ success: true, user });
+  res.status(statusCode).json({ success: true, user, accessToken: token });
 };
 
 export const signup = asyncHandler(async (req, res) => {

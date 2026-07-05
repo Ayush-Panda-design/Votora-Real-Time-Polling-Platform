@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, googleLogin, fetchMe } from '../authSlice';
+import { loginUser, googleLogin } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
@@ -30,9 +30,7 @@ const LoginPage = () => {
 
   const handleAuthSuccess = async (res, message) => {
     notify.success(message);
-    await dispatch(fetchMe());
-    const user = res.payload.user;
-    navigateAfterAuth(user);
+    navigateAfterAuth(res.payload.user);
   };
 
   const handleSubmit = async (e) => {

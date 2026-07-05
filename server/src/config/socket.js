@@ -18,11 +18,16 @@ export const initSocket = (httpServer) => {
   });
 
   io.use((socket, next) => {
+    socket.userId = null;
     try {
-      const raw = socket.handshake.headers.cookie || '';
-      const cookies = cookie.parse(raw);
-      if (cookies.token) {
-        const decoded = jwt.verify(cookies.token, process.env.JWT_SECRET);
+      let token = socket.handshake.auth?.token;
+      if (!token) {
+        const raw = socket.handshake.headers.cookie || '';
+        const cookies = cookie.parse(raw);
+        token = cookies.token;
+      }
+      if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         socket.userId = decoded.id;
       }
     } catch {
@@ -30,7 +35,6 @@ export const initSocket = (httpServer) => {
     }
     next();
   });
-
   io.on('connection', (socket) => {
     console.log(`🔌 Socket connected: ${socket.id}${socket.userId ? ` (user ${socket.userId})` : ''}`);
 

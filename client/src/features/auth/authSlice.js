@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { setAccessToken, clearAccessToken } from '../../services/authSession';
 
 export const signupUser = createAsyncThunk('auth/signup', async (data, { rejectWithValue }) => {
   try {
@@ -30,6 +31,7 @@ export const fetchMe = createAsyncThunk('auth/me', async (_, { rejectWithValue }
 
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   try { await api.post('/auth/logout'); } catch { /* ignore */ }
+  clearAccessToken();
 });
 
 export const completeOnboarding = createAsyncThunk('auth/onboarding', async (data, { rejectWithValue }) => {
@@ -95,6 +97,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.authChecked = true;
         state.user = action.payload.user;
+        if (action.payload.accessToken) setAccessToken(action.payload.accessToken);
       })
       .addCase(loginUser.rejected, rejected)
 
@@ -144,6 +147,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.authChecked = true;
         state.user = action.payload.user;
+        if (action.payload.accessToken) setAccessToken(action.payload.accessToken);
       })
       .addCase(googleLogin.rejected, rejected);
   },

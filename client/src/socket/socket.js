@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { getAccessToken } from '../services/authSession';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
@@ -10,6 +11,10 @@ export const getSocket = () => {
       withCredentials: true,
       autoConnect: false,
       transports: ['websocket'],
+      auth: (cb) => {
+        const token = getAccessToken();
+        cb(token ? { token } : {});
+      },
     });
   }
   return socket;

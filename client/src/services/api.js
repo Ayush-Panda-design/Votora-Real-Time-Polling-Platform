@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { isAuthEndpoint, isPublicAppPath } from '../utils/authEndpoints';
+import { getAccessToken, setAccessToken, clearAccessToken } from './authSession';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -10,12 +11,15 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   config.headers['X-Requested-With'] = 'XMLHttpRequest';
+  const token = getAccessToken();
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 let refreshPromise = null;
 
 const redirectToLogin = () => {
+  clearAccessToken();
   const path = window.location.pathname;
   if (!path.startsWith('/login') && !path.startsWith('/signup')) {
     window.location.href = '/login';
@@ -50,7 +54,12 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         if (!refreshPromise) {
-          refreshPromise = api.post('/auth/refresh').finally(() => { refreshPromise = null; });
+          refreshPromise = api.post('/auth/refresh')
+            .then((res) => {
+              if (res.data?.accessToken) setAccessToken(res.data.accessToken);
+              return res;
+            })
+            .finally(() => { refreshPromise = null; });
         }
         await refreshPromise;
         return api(original);

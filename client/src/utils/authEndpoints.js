@@ -18,6 +18,7 @@ export const isPublicAppPath = (path) =>
   path === '/'
   || path.startsWith('/login')
   || path.startsWith('/signup')
+  || path.startsWith('/onboarding')
   || path.startsWith('/forgot-password')
   || path.startsWith('/reset-password')
   || path.startsWith('/verify-email')
