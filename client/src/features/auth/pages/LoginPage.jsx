@@ -5,6 +5,7 @@ import { loginUser, googleLogin, fetchMe } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
+import { resolvePostAuthPath } from '../../../utils/postAuthNavigation';
 import Input, { PasswordInput } from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 
@@ -24,8 +25,7 @@ const LoginPage = () => {
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const navigateAfterAuth = (user) => {
-    const target = redirect || (user?.onboardingCompleted ? '/dashboard' : '/onboarding');
-    navigate(target, { replace: true });
+    navigate(resolvePostAuthPath(user, redirect), { replace: true });
   };
 
   const handleAuthSuccess = async (res, message) => {

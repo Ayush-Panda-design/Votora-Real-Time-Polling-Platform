@@ -5,6 +5,7 @@ import { signupUser, googleLogin, fetchMe } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
+import { resolvePostAuthPath } from '../../../utils/postAuthNavigation';
 import Input, { PasswordInput } from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 
@@ -48,13 +49,16 @@ const SignupPage = () => {
     }
   };
 
+  const handleAuthSuccess = async (res, message) => {
+    notify.success(message);
+    await dispatch(fetchMe());
+    navigate(resolvePostAuthPath(res.payload.user, redirect), { replace: true });
+  };
+
   const handleGoogleSuccess = async (credentialResponse) => {
     const res = await dispatch(googleLogin(credentialResponse.credential));
     if (googleLogin.fulfilled.match(res)) {
-      notify.success('Signed in with Google!');
-      await dispatch(fetchMe());
-      const user = res.payload.user;
-      navigate(redirect || (user?.onboardingCompleted ? '/dashboard' : '/onboarding'), { replace: true });
+      await handleAuthSuccess(res, 'Signed in with Google!');
     } else {
       notify.error(res.payload);
     }

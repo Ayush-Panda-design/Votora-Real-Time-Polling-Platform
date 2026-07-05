@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isAuthEndpoint, isPublicAppPath } from '../utils/authEndpoints';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -14,38 +15,38 @@ api.interceptors.request.use((config) => {
 
 let refreshPromise = null;
 
-const isPublicPath = (path) =>
-  path === '/'
-  || path.startsWith('/login')
-  || path.startsWith('/signup')
-  || path.startsWith('/forgot-password')
-  || path.startsWith('/reset-password')
-  || path.startsWith('/verify-email')
-  || path.startsWith('/poll/');
-
 const redirectToLogin = () => {
-  if (!window.location.pathname.startsWith('/login')) {
+  const path = window.location.pathname;
+  if (!path.startsWith('/login') && !path.startsWith('/signup')) {
     window.location.href = '/login';
   }
+};
+
+const shouldAttemptRefresh = (err, original) => {
+  const path = window.location.pathname;
+  return (
+    err.response?.status === 401
+    && !isAuthEndpoint(original?.url)
+    && !original?._retry
+    && !isPublicAppPath(path)
+  );
+};
+
+const shouldRedirectOn401 = (err, original) => {
+  const path = window.location.pathname;
+  return (
+    err.response?.status === 401
+    && !isAuthEndpoint(original?.url)
+    && !isPublicAppPath(path)
+  );
 };
 
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original = err.config;
-    const isAuthCheck = original?.url?.includes('/auth/me');
-    const isRefresh = original?.url?.includes('/auth/refresh');
-    const isLogin = original?.url?.includes('/auth/login') || original?.url?.includes('/auth/google');
-    const path = window.location.pathname;
 
-    if (
-      err.response?.status === 401
-      && !isAuthCheck
-      && !isRefresh
-      && !isLogin
-      && !original?._retry
-      && !isPublicPath(path)
-    ) {
+    if (shouldAttemptRefresh(err, original)) {
       original._retry = true;
       try {
         if (!refreshPromise) {
@@ -55,16 +56,11 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         redirectToLogin();
+        return Promise.reject(err);
       }
     }
 
-    if (
-      err.response?.status === 401
-      && !isAuthCheck
-      && !isRefresh
-      && !isLogin
-      && !isPublicPath(path)
-    ) {
+    if (shouldRedirectOn401(err, original)) {
       redirectToLogin();
     }
     return Promise.reject(err);

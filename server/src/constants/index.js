@@ -46,18 +46,24 @@ export const SOCKET_EVENTS = {
   TIMER_STARTED: 'timer_started',
 };
 
-export const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  path: '/',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+/**
+ * Cross-site auth cookies (Vercel → Render) require SameSite=None + Secure.
+ * Enforced here so the pair is never misconfigured.
+ */
+const createAuthCookieOptions = (maxAge) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const sameSite = isProduction ? 'none' : 'lax';
+  const secure = sameSite === 'none' ? true : isProduction;
+
+  return {
+    httpOnly: true,
+    secure,
+    sameSite,
+    path: '/',
+    maxAge,
+  };
 };
 
-export const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  path: '/',
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-};
+export const COOKIE_OPTIONS = createAuthCookieOptions(7 * 24 * 60 * 60 * 1000);
+
+export const REFRESH_COOKIE_OPTIONS = createAuthCookieOptions(30 * 24 * 60 * 60 * 1000);
