@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 
 const items = [
   'Live Classrooms', 'Team Standups', 'Product Launches', 'Community AMAs',
-  'Hackathon Voting', 'Event Feedback', 'Quiz Nights', 'Town Halls',
+  'Live Events', 'Event Feedback', 'Quiz Nights', 'Town Halls',
   'UX Research', 'Conference Q&A', 'Startup Pitches', 'Training Sessions',
 ];
 

@@ -1,6 +1,6 @@
 # Votora — Real-Time Polling & Live Feedback Platform
 
-**Votora** is a production-grade, full-stack platform for creators, educators, and event hosts to run immersive, real-time polls and quizzes. It ships live analytics, anti-cheat for quiz mode, dual timing (auto-expiry + manual live timer), and a premium dark UI — optimized for both hosts and respondents.
+**Votora** is a full-stack real-time polling and quiz platform for educators, teams, and event hosts. It includes live analytics, optional quiz tab monitoring, synchronized timers, and a responsive dark UI for creators and respondents.
 
 | Service | Live URL |
 |---------|----------|
@@ -24,8 +24,8 @@
 - [Authentication](#-authentication)
 - [Real-Time (Socket.io)](#-real-time-socketio)
 - [Folder Structure](#-folder-structure)
+- [Security & Integrity](#-security--integrity)
 - [Troubleshooting](#-troubleshooting)
-- [Hackathon Compliance](#-hackathon-requirements-compliance-checklist)
 
 ---
 
@@ -37,7 +37,7 @@
 - **Dual time management**
   - *Auto-expiry* — set a date/time for automatic closure.
   - *Manual live timer* — respondents wait in a lobby until you click **Start** for synchronized competitive sessions.
-- **Anti-cheat (quiz mode)** — tab switching or window defocus disqualifies the respondent and auto-submits progress.
+- **Quiz tab monitoring (optional)** — when enabled on a quiz, leaving the tab or window triggers an automatic submission of current answers on the client. Useful as a deterrent in proctored settings; not a server-side enforcement mechanism.
 - **Live dashboard & analytics** — real-time vote counts, bar/pie charts (Recharts), MongoDB aggregation pipelines.
 - **Presentation mode** — clean, distraction-free view for screen sharing.
 - **Publish results** — optionally expose final analytics on the public poll link.
@@ -77,14 +77,13 @@
 | Real-time | Socket.io (poll-scoped rooms) |
 | Auth | JWT (httpOnly cookies + Bearer token fallback) + Google OAuth 2.0 |
 | Validation | express-validator |
-| Security | Rate limiting, CORS allowlist, CSRF on auth routes |
+| Security | Rate limiting (`express-rate-limit`), CORS allowlist, origin/referer CSRF guard, Helmet headers |
 
-### Security Highlights
+### Engineering notes
 
-- **Clean architecture** — Routes → Controllers → Services → Models.
-- **Cross-origin auth** — production uses `SameSite=None; Secure` cookies **and** returns `accessToken` in JSON for Bearer header fallback (Vercel ↔ Render).
-- **Rate limiting** — general API + stricter auth endpoint limits.
-- **Atomic voting** — MongoDB `$inc` prevents double-vote race conditions.
+- **Layered architecture** — Routes → Controllers → Services → Models.
+- **Cross-origin auth** — production uses `SameSite=None; Secure` cookies and returns `accessToken` in JSON for Bearer header fallback (Vercel ↔ Render).
+- **Input validation** — `express-validator` on auth routes; answer validation in `validateResponseAnswers.js`.
 - **Global error handling** — standardized `ApiError` JSON responses.
 
 ---
@@ -399,6 +398,61 @@ Votora-Real-Time-Polling-Platform/
 
 ---
 
+## Security & Integrity
+
+This section describes what is actually implemented in code — useful for reviewers evaluating the project.
+
+### Rate limiting
+
+Configured in `server/src/middleware/rateLimit.middleware.js` and applied in `server/src/app.js`:
+
+| Limiter | Scope | Limit | Notes |
+|---------|-------|-------|-------|
+| `apiLimiter` | All `/api/*` routes | 300 requests / 15 min per IP | Uses `express-rate-limit` with standard rate-limit headers |
+| `authLimiter` | `/api/auth/*` | 25 requests / 15 min per IP | `skipSuccessfulRequests: true` — only failed auth attempts count |
+
+`app.set('trust proxy', 1)` is enabled so client IPs resolve correctly behind Render’s reverse proxy.
+
+**Current limitations:** limiters use the default in-memory store (resets on deploy/restart). There is no Redis-backed store, no per-endpoint limit on poll submissions, and users behind the same NAT share one bucket.
+
+### Quiz tab monitoring (“cheat protection”)
+
+When a creator enables **Quiz mode** and toggles **Tab monitoring** (`cheatProtection: true` on the poll):
+
+1. `PublicPollPage.jsx` listens for `visibilitychange` (hidden) and `window` `blur`.
+2. On trigger, the client POSTs to `/api/responses/:pollId` with `isAutoSubmitted: true`.
+3. The server skips mandatory-question validation for auto-submissions but still stores and scores the response normally.
+
+**Current limitations:**
+
+- Enforcement is **client-side only** — the server trusts the `isAutoSubmitted` flag from the request body.
+- Responses are **not flagged** in the database as cheat-triggered (`Response` schema has no such field).
+- Users are **not blocked** from continuing; partial answers are submitted and scored.
+- Determined users could bypass via DevTools, custom API calls, or environments where blur/visibility events do not fire reliably (some mobile browsers).
+
+This is best described as an **optional integrity aid for low-stakes quizzes**, not robust anti-cheat.
+
+### Duplicate response prevention
+
+`submitResponseService` rejects a second submission when:
+
+- the same authenticated user already responded (`pollId` + `respondent`), or
+- the same IP already responded (`pollId` + `ipAddress`).
+
+Quiz mode requires login, so user-based deduplication applies. Anonymous polls rely primarily on IP.
+
+**Current limitations:** checks are read-then-write (not a MongoDB transaction), so a tight race could still create duplicates under extreme concurrency. IP-based deduplication is weak against VPNs or shared networks.
+
+### Other security measures
+
+- **CORS** — strict allowlist from `CLIENT_URL` (`server/src/config/clientOrigins.js`).
+- **CSRF guard** — POST/PUT/PATCH/DELETE under `/api` require a matching `Origin` or `Referer` from the allowlist (`server/src/middleware/csrf.middleware.js`).
+- **Helmet** — security headers; CSP disabled for SPA compatibility.
+- **Auth** — JWT in httpOnly cookies + Bearer token fallback; Google ID token verification on the server.
+- **Poll access** — optional PIN, domain allowlists, auth-required mode, expiry/timer gates enforced server-side.
+
+---
+
 ## Troubleshooting
 
 ### CORS errors in browser console
@@ -439,23 +493,8 @@ Votora-Real-Time-Polling-Platform/
 
 ---
 
-## Hackathon Requirements Compliance Checklist
-
-- [x] **Full-stack** — React + Node + MongoDB
-- [x] **Poll creation** — multi-question, descriptions
-- [x] **Mandatory/optional flags** — frontend + backend validation
-- [x] **Anonymous/auth modes** — backend enforces restrictions
-- [x] **Expiry system** — scheduled expiry + manual live timer
-- [x] **Single option selection** — MCQ UI + schema constraints
-- [x] **Analytics dashboard** — aggregation pipelines, live charts
-- [x] **Result publishing** — creator-controlled public results
-- [x] **WebSockets** — live counters and chart updates
-- [x] **Code quality** — separation of concerns, error handling, auth, docs
-
----
-
 ## License
 
 See repository for license details.
 
-**Built with care for modern live engagement.** Try the live app → [votora-real-time-polling-platform-psi.vercel.app](https://votora-real-time-polling-platform-psi.vercel.app/)
+**Live demo:** [votora-real-time-polling-platform-psi.vercel.app](https://votora-real-time-polling-platform-psi.vercel.app/)

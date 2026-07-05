@@ -181,7 +181,7 @@ const EditPollPage = () => {
             if (form.isQuiz) updateField('cheatProtection', false);
           }} />
           {form.isQuiz && (
-            <Toggle label="Anti-Cheat" desc="Auto-submit on tab leave" value={form.cheatProtection} onClick={() => updateField('cheatProtection', !form.cheatProtection)} />
+            <Toggle label="Tab Monitor" desc="Auto-submit on tab leave (client-side)" value={form.cheatProtection} onClick={() => updateField('cheatProtection', !form.cheatProtection)} />
           )}
           <Toggle label="Require Login" desc="Authenticated users only" value={form.requiresAuth} onClick={() => updateField('requiresAuth', !form.requiresAuth)} />
           <button type="submit" disabled={loading} className="w-full px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 transition font-semibold disabled:opacity-50 mt-4">

@@ -8,7 +8,7 @@ const highlights = [
   { icon: FiZap, text: 'Real-time votes across every device' },
   { icon: FiBarChart2, text: 'Live analytics without refreshing' },
   { icon: FiUsers, text: 'Anonymous or authenticated audiences' },
-  { icon: FiShield, text: 'PIN locks, domain rules & cheat protection' },
+  { icon: FiShield, text: 'PIN locks, domain rules & optional tab monitoring' },
 ];
 
 const AuthLayout = () => (

@@ -321,7 +321,7 @@ const CreatePollPage = () => {
                   <PremiumToggle label="Anonymous Responses" desc="Hide voter identity from results" value={form.isAnonymous} onClick={() => updateForm('isAnonymous', !form.isAnonymous)} icon={FiEye} />
                   <PremiumToggle label="Quiz Mode" desc="Score answers against correct options" value={form.isQuiz} onClick={() => { updateForm('isQuiz', !form.isQuiz); if (form.isQuiz) updateForm('cheatProtection', false); }} icon={FiCheckCircle} />
                   {form.isQuiz && (
-                    <PremiumToggle label="Anti-Cheat Shield" desc="Auto-submit when tab is switched" value={form.cheatProtection} onClick={() => updateForm('cheatProtection', !form.cheatProtection)} icon={FiLock} premium />
+                    <PremiumToggle label="Tab Monitor" desc="Auto-submit when the tab loses focus (client-side)" value={form.cheatProtection} onClick={() => updateForm('cheatProtection', !form.cheatProtection)} icon={FiLock} premium />
                   )}
                   <PremiumToggle label="Shuffle Options" desc="Randomize answer order per participant" value={form.shuffleOptions} onClick={() => updateForm('shuffleOptions', !form.shuffleOptions)} icon={FiShuffle} premium />
 
@@ -354,7 +354,7 @@ const CreatePollPage = () => {
               {[
                 { on: form.requiresAuth, label: 'Auth required' },
                 { on: form.accessCode?.trim(), label: 'PIN protected' },
-                { on: form.cheatProtection, label: 'Anti-cheat' },
+                { on: form.cheatProtection, label: 'Tab monitor' },
                 { on: form.shuffleOptions, label: 'Option shuffle' },
                 { on: form.maxResponses, label: 'Response cap' },
                 { on: form.timeLimitSystem !== 'none', label: 'Time limited' },

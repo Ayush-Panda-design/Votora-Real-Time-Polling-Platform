@@ -109,7 +109,7 @@ export const PAGE_GUIDES = {
           'Anonymous — voters don\'t need to sign in (not available for quizzes).',
           'Require login — only authenticated users can respond.',
           'Access PIN — optional code voters must enter before seeing questions.',
-          'Anti-cheat — auto-submits the quiz if someone leaves the tab (quiz mode only).',
+          'Tab monitoring — optionally auto-submits the quiz if someone leaves the tab (client-side, quiz mode only).',
         ],
         tip: 'Higher security score = more restrictions enabled. Balance openness vs. control.',
       },
@@ -139,10 +139,10 @@ export const PAGE_GUIDES = {
         icon: FiShield,
         accent: 'amber',
         title: 'Settings toggles',
-        summary: 'Anonymous, quiz mode, anti-cheat, and login requirements.',
+        summary: 'Anonymous, quiz mode, tab monitoring, and login requirements.',
         steps: [
           'Turning on Quiz mode lets you mark correct answers per question.',
-          'Anti-cheat only applies when quiz mode is on.',
+          'Tab monitoring only applies when quiz mode is on.',
           'Require login prevents anonymous votes — useful for internal surveys.',
         ],
       },
@@ -317,7 +317,7 @@ export const PAGE_GUIDES = {
         summary: 'Stay on this tab during a quiz.',
         steps: [
           'You must be signed in to take a quiz.',
-          'Do not switch tabs — anti-cheat may auto-submit your answers.',
+          'If tab monitoring is enabled, switching tabs may auto-submit your answers.',
           'Your score appears immediately after submission.',
         ],
       },
@@ -373,7 +373,7 @@ export const PAGE_GUIDES = {
         steps: [
           'Enable Quiz mode when creating; mark the correct option per question.',
           'Require login so scores tie to respondents.',
-          'Optional anti-cheat auto-submits if someone leaves the tab.',
+          'Optional tab monitoring auto-submits if someone leaves the tab (client-side).',
         ],
       },
       {

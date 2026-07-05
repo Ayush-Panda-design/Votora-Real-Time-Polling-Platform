@@ -302,7 +302,7 @@ const ProfilePage = () => {
                 'Unlimited polls & questions',
                 'Real-time response analytics',
                 'PIN-protected & domain-restricted polls',
-                'Anti-cheat quiz mode with shuffle',
+                'Quiz mode with option shuffle and tab monitoring',
                 'HttpOnly cookie authentication',
               ].map((f) => (
                 <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: T.subtle }}>
