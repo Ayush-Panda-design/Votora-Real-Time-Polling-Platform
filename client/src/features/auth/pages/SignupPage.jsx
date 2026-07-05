@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { signupUser, googleLogin } from '../authSlice';
+import { signupUser, googleLogin, fetchMe } from '../authSlice';
 import { FiArrowRight } from 'react-icons/fi';
 import { GoogleLogin } from '@react-oauth/google';
 import notify from '../../../utils/notify';
@@ -52,8 +52,14 @@ const SignupPage = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     const res = await dispatch(googleLogin(credentialResponse.credential));
     if (googleLogin.fulfilled.match(res)) {
+      const user = res.payload?.user;
+      if (!user) {
+        notify.error('Sign-in succeeded but profile data was missing.');
+        return;
+      }
       notify.success('Signed in with Google!');
-      navigate(resolvePostAuthPath(res.payload.user, redirect), { replace: true });
+      await dispatch(fetchMe());
+      navigate(resolvePostAuthPath(user, redirect), { replace: true });
     } else {
       notify.error(res.payload);
     }

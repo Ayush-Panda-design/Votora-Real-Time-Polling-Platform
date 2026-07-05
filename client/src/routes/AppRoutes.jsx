@@ -12,9 +12,7 @@ import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage';
 import VerifyEmailPage from '../features/auth/pages/VerifyEmailPage';
 import LandingPage from '../features/auth/pages/LandingPage';
-
-// Lazy — heavier / dashboard / public poll pages (isolated from auth shell)
-const OnboardingPage = lazy(() => import('../features/onboarding/pages/OnboardingPage'));
+import OnboardingPage from '../features/onboarding/pages/OnboardingPage';
 const DashboardLayout = lazy(() => import('../layouts/DashboardLayout'));
 const DashboardPage = lazy(() => import('../features/polls/pages/DashboardPage'));
 const CreatePollPage = lazy(() => import('../features/polls/pages/CreatePollPage'));
@@ -52,14 +50,7 @@ const AppRoutes = () => (
     </Route>
 
     <Route element={<ProtectedRoute />}>
-      <Route
-        path="/onboarding"
-        element={(
-          <Lazy>
-            <OnboardingPage />
-          </Lazy>
-        )}
-      />
+      <Route path="/onboarding" element={<OnboardingPage />} />
     </Route>
 
     <Route element={<ProtectedRoute requireOnboarding />}>
