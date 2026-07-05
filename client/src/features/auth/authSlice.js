@@ -76,7 +76,7 @@ export const googleLogin = createAsyncThunk('auth/googleLogin', async (idToken, 
 
 const authSlice = createSlice({
   name: 'auth',
-  initialState: { user: null, loading: false, authChecked: false, error: null },
+  initialState: { user: null, loading: false, authChecked: true, error: null },
   reducers: {
     clearError: (state) => { state.error = null; },
     setUser:    (state, action) => { state.user = action.payload; },
@@ -102,7 +102,7 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, rejected)
 
       .addCase(fetchMe.pending, (state) => {
-        state.loading = true;
+        if (!state.user) state.loading = true;
         state.error = null;
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
