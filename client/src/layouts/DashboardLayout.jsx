@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../features/auth/authSlice';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiHome, FiPlus, FiUser, FiLogOut, FiMenu, FiX, FiBook, FiShield } from 'react-icons/fi';
+import { FiHome, FiPlus, FiUser, FiLogOut, FiMenu, FiX, FiBook, FiShield, FiLayers } from 'react-icons/fi';
 import notify from '../utils/notify';
 import Logo from '../components/ui/Logo';
 import { PremiumBackground } from '../components/ui/PremiumUI';
@@ -75,6 +75,17 @@ const DashboardLayout = () => {
               <span>{link.label}</span>
             </NavLink>
           ))}
+          {/* Admin Panel — only visible to admin */}
+          {user?.role === 'admin' && (
+            <NavLink
+              to="/admin"
+              onClick={closeMobile}
+              className={({ isActive }) => (isActive ? 'premium-sidebar-link-active' : 'premium-sidebar-link-inactive')}
+            >
+              <FiLayers size={17} />
+              <span>Admin Panel</span>
+            </NavLink>
+          )}
         </nav>
 
         <div className="border-t border-white/[0.06] p-4 space-y-2">

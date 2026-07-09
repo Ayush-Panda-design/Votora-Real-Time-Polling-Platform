@@ -9,9 +9,11 @@ import userRoutes from './routes/user.routes.js';
 import pollRoutes from './routes/poll.routes.js';
 import responseRoutes from './routes/response.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import errorMiddleware from './middleware/error.middleware.js';
 import { apiLimiter, authLimiter } from './middleware/rateLimit.middleware.js';
 import { csrfProtection } from './middleware/csrf.middleware.js';
+import { activityTracker } from './middleware/activityTracker.middleware.js';
 import { getClientOrigins, isAllowedClientOrigin, getAuthConfigStatus } from './config/clientOrigins.js';
 
 const app = express();
@@ -55,6 +57,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/polls', pollRoutes);
 app.use('/api/responses', responseRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Activity tracker - must come after routes so req.user is populated
+app.use('/api', activityTracker);
 
 // Health check
 app.get('/api/health', (req, res) => {

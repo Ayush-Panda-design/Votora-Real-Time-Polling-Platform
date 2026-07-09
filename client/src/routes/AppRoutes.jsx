@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
+import AdminRoute from './AdminRoute';
 import AuthLayout from '../layouts/AuthLayout';
 import Spinner from '../components/ui/Spinner';
 
@@ -24,6 +25,7 @@ const PresentationPage = lazy(() => import('../features/presentation/pages/Prese
 const HelpPage = lazy(() => import('../features/help/pages/HelpPage'));
 const PublicPollPage = lazy(() => import('../features/publicPoll/pages/PublicPollPage'));
 const PublicResultsPage = lazy(() => import('../features/publicPoll/pages/PublicResultsPage'));
+const AdminDashboard = lazy(() => import('../features/admin/pages/AdminDashboard'));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-votora-bg">
@@ -80,14 +82,18 @@ const AppRoutes = () => (
         </Lazy>
       )}
     />
-    <Route
-      path="/poll/:pollCode/results"
+    <Route path="/poll/:pollCode/results"
       element={(
         <Lazy>
           <PublicResultsPage />
         </Lazy>
       )}
     />
+
+    {/* Admin routes */}
+    <Route element={<AdminRoute />}>
+      <Route path="/admin" element={<Lazy><AdminDashboard /></Lazy>} />
+    </Route>
 
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>

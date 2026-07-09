@@ -1,4 +1,7 @@
 
+export const ADMIN_EMAILS = ['pandaayush25305@gmail.com', 'panda355089ayush@gmail.com'];
+// Keep ADMIN_EMAIL as alias pointing to the first/primary admin
+export const ADMIN_EMAIL = ADMIN_EMAILS[0];
 
 export const POLL_STATUS = {
   ACTIVE: 'active',
