@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiUsers, FiBarChart2, FiActivity, FiSearch, FiRefreshCw,
-  FiX, FiMapPin, FiMonitor, FiGlobe, FiMail, FiBriefcase,
-  FiCalendar, FiClock, FiShield, FiTrash2, FiChevronRight,
-  FiTrendingUp, FiZap, FiLayers, FiEye, FiChevronLeft,
-  FiCheck, FiAlertTriangle,
+  FiX, FiMapPin, FiMail, FiBriefcase,
+  FiCalendar, FiShield, FiTrash2, FiChevronRight,
+  FiTrendingUp, FiZap, FiEye, FiChevronLeft,
 } from 'react-icons/fi';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
 } from 'recharts';
 import api from '../../../services/api';
