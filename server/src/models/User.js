@@ -2,6 +2,22 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { AUTH_PROVIDERS, USER_ROLES } from '../constants/index.js';
 
+const loginHistorySchema = new mongoose.Schema(
+  {
+    ip: { type: String, default: '' },
+    location: {
+      city: { type: String, default: '' },
+      country: { type: String, default: '' },
+      countryCode: { type: String, default: '' },
+      region: { type: String, default: '' },
+    },
+    userAgent: { type: String, default: '' },
+    authProvider: { type: String, default: 'local' },
+    loginAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -15,6 +31,17 @@ const userSchema = new mongoose.Schema(
     onboardingCompleted: { type: Boolean, default: false },
     googleId: { type: String },
     lastLoginAt: { type: Date, default: null },
+    lastSessionAt: { type: Date, default: null },
+    sessionCount: { type: Number, default: 0 },
+    totalLogins: { type: Number, default: 0 },
+    registrationIP: { type: String, default: '' },
+    registrationLocation: {
+      city: { type: String, default: '' },
+      country: { type: String, default: '' },
+      countryCode: { type: String, default: '' },
+      region: { type: String, default: '' },
+    },
+    loginHistory: { type: [loginHistorySchema], default: [] },
     resetPasswordToken: { type: String, select: false },
     resetPasswordExpires: { type: Date, select: false },
     isEmailVerified: { type: Boolean, default: true },

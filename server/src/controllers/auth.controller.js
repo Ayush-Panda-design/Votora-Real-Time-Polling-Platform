@@ -22,10 +22,14 @@ const sendTokenResponse = (res, { token, refreshToken, user }, statusCode = 200)
 
 export const signup = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
-  const { emailVerifyToken } = await signupService({ name, email, password });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || '';
+  const userAgent = req.headers['user-agent'] || '';
+  const { emailVerifyToken, adminSkippedVerify } = await signupService({ name, email, password, ip, userAgent });
   const payload = {
     success: true,
-    message: 'Account created. Please verify your email before signing in.',
+    message: adminSkippedVerify 
+      ? 'Account created successfully. You can now log in.' 
+      : 'Account created. Please verify your email before signing in.',
   };
   if (process.env.NODE_ENV === 'development' && emailVerifyToken) {
     payload.devVerifyToken = emailVerifyToken;
@@ -35,13 +39,17 @@ export const signup = asyncHandler(async (req, res) => {
 
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const result = await loginService({ email, password });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || '';
+  const userAgent = req.headers['user-agent'] || '';
+  const result = await loginService({ email, password, ip, userAgent });
   sendTokenResponse(res, result);
 });
 
 export const googleAuth = asyncHandler(async (req, res) => {
   const { idToken } = req.body;
-  const result = await googleAuthService(idToken);
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip || '';
+  const userAgent = req.headers['user-agent'] || '';
+  const result = await googleAuthService(idToken, { ip, userAgent });
   sendTokenResponse(res, result);
 });
 
